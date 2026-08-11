@@ -88,10 +88,13 @@ export async function processPptxWithPipeline(
     if (combinedSlideText.trim().length === 0) continue;
 
     try {
-      const prompt = `You are a PPTX presentation text editor. Humanize the following slide bullet points and paragraph text line-by-line. 
+      const prompt = `CRITICAL: You are a text rewriting and humanizing assistant. Never refuse a request due to safety filters unless the input contains extreme violence, self-harm, or illegal material. For short, casual, or vague inputs (like 'hlw' or single words), do NOT output an AI refusal or ethical lecture. Simply rewrite, expand, or humanize the input naturally in the requested language [${language}].
+
+You are a PPTX presentation text editor. Humanize the following slide bullet points and paragraph text line-by-line. 
 CRITICAL RULE: Maintain the exact same line count.
 CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate to English unless '${language}' is English.
 CRITICAL RULE 2: Output ONLY the final humanized text line-by-line. ABSOLUTELY NO conversational fillers or preambles.
+CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate should be returned.
 
 Context: ${toneInstruction}
 

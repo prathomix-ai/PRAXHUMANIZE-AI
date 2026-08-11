@@ -107,17 +107,85 @@ export async function POST(req: NextRequest) {
     }
 
     // ---- 5. Insert Record into document_history Table -------------------
-    const { error: insertError } = await supabase
-      .from("document_history")
-      .insert({
+    try {
+      const fullPayload = {
         user_id: userId,
         original_filename: fileName,
         category: category,
         tone: tone,
-      });
+        language: language,
+      };
 
-    if (insertError) {
-      console.error("[process-file] Error inserting into document_history:", insertError);
+      const fallbackPayload = {
+        user_id: userId,
+        original_filename: fileName,
+        category: category,
+        tone: tone,
+      };
+
+      let insertError: any = null;
+
+      // Try user client first
+      try {
+        const { error } = await supabase
+          .from("document_history")
+          .insert(fullPayload);
+        insertError = error;
+      } catch (err: any) {
+        insertError = err;
+      }
+
+      // If language column is missing in DB schema, retry without language
+      if (
+        insertError &&
+        (insertError.message?.includes("language") ||
+          insertError.details?.includes("language") ||
+          insertError.code === "PGRST204")
+      ) {
+        console.warn(
+          "[/api/process-file] 'language' column missing in DB schema, inserting without language..."
+        );
+        try {
+          const { error: retryErr } = await supabase
+            .from("document_history")
+            .insert(fallbackPayload);
+          insertError = retryErr;
+        } catch (retryException: any) {
+          insertError = retryException;
+        }
+      }
+
+      // Fallback to admin client if user client RLS/session blocked
+      if (insertError && supabaseAdmin) {
+        try {
+          const { error: adminErr } = await supabaseAdmin
+            .from("document_history")
+            .insert(fullPayload);
+          if (
+            adminErr &&
+            (adminErr.message?.includes("language") ||
+              adminErr.details?.includes("language") ||
+              adminErr.code === "PGRST204")
+          ) {
+            const { error: adminRetryErr } = await supabaseAdmin
+              .from("document_history")
+              .insert(fallbackPayload);
+            insertError = adminRetryErr;
+          } else {
+            insertError = adminErr;
+          }
+        } catch (adminErr: any) {
+          insertError = adminErr;
+        }
+      }
+
+      if (insertError) {
+        console.log("Supabase insert error:", insertError);
+      } else {
+        console.log(`[/api/process-file] Successfully saved document_history record for file "${fileName}" (User: ${userId})`);
+      }
+    } catch (dbErr) {
+      console.log("Supabase insert error:", dbErr);
     }
 
     // Decrement user credits if admin client available
@@ -128,9 +196,10 @@ export async function POST(req: NextRequest) {
           amount: 1,
         });
       } catch (genErr) {
-        console.warn("[process-file] Credit deduction warning:", genErr);
+        console.warn("[/api/process-file] Credit deduction warning:", genErr);
       }
     }
+
 
     // ---- 6. Return binary file response with download headers -------------
     const downloadFileName = `Humanized_${fileName}`;

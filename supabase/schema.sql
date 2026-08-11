@@ -142,8 +142,11 @@ create table if not exists public.document_history (
   original_filename text not null,
   category text,
   tone text,
+  language text default 'English',
   created_at timestamptz not null default now()
 );
+
+alter table public.document_history add column if not exists language text default 'English';
 
 create index if not exists idx_document_history_user_created 
   on public.document_history (user_id, created_at desc);
@@ -157,4 +160,5 @@ create policy "Users can view their own document history"
 create policy "Users can insert their own document history"
   on public.document_history for insert
   with check (auth.uid() = user_id);
+
 

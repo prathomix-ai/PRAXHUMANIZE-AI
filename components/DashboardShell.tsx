@@ -28,7 +28,7 @@ export default function DashboardShell({
 
   return (
     <>
-      <Header credits={credits} email={email} />
+      <Header email={email} />
 
       <div className="relative z-10 mx-auto w-full max-w-6xl flex-1 space-y-6 px-4 pb-16 pt-4 md:px-8">
         {/* Header & Animated Segmented Toggle */}
@@ -89,6 +89,7 @@ export default function DashboardShell({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <Workspace onProcessed={handleProcessed} />
             </motion.div>
@@ -99,6 +100,7 @@ export default function DashboardShell({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2 }}
+              className="w-full"
             >
               <FileDropzone onProcessed={handleProcessed} />
             </motion.div>

@@ -98,7 +98,7 @@ export default function Workspace({
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-4 md:px-8">
+    <div className="w-full">
       {/* Controls */}
       <div className="glass mb-4 flex flex-col gap-4 rounded-2xl p-4 md:p-5 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex-1">

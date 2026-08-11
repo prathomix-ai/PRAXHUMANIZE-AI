@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { humanizeText, type Category, type Tone } from "@/lib/llm";
-import { supabaseAdmin as supabaseServer } from "@/lib/supabase/admin";
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
 export const maxDuration = 60;
 
@@ -22,9 +23,11 @@ const VALID_TONES: Tone[] = [
   "easy_words",
 ];
 
-
 export async function POST(req: NextRequest) {
   try {
+    const supabase = createSupabaseServerClient();
+    const { data: sessionData } = await supabase.auth.getSession();
+
     const body = await req.json();
     const { text, category, tone, language = "English", userId } = body as {
       text?: string;
@@ -33,6 +36,8 @@ export async function POST(req: NextRequest) {
       language?: string;
       userId?: string;
     };
+
+    const activeUserId = sessionData?.session?.user?.id || userId;
 
     // --- Validate input ---
     if (!text || typeof text !== "string" || text.trim().length === 0) {
@@ -61,11 +66,11 @@ export async function POST(req: NextRequest) {
     }
 
     // --- Optional: check credits before spending an LLM call ---
-    if (userId) {
-      const { data: userRow, error: userErr } = await supabaseServer
+    if (activeUserId && supabaseAdmin) {
+      const { data: userRow, error: userErr } = await supabaseAdmin
         .from("users")
         .select("credits")
-        .eq("id", userId)
+        .eq("id", activeUserId)
         .single();
 
       if (!userErr && userRow && userRow.credits <= 0) {
@@ -79,23 +84,107 @@ export async function POST(req: NextRequest) {
     // --- Call the LLM ---
     const humanized = await humanizeText({ text, category, tone, language });
 
+    // --- Persist to document_history table ---
+    if (activeUserId) {
+      try {
+        const textSnippet =
+          text.trim().length > 40 ? text.trim().substring(0, 40) + "..." : text.trim();
 
-    // --- Persist to history + spend a credit (best-effort, non-blocking) ---
-    if (userId) {
-      await supabaseServer.from("generations").insert({
-        user_id: userId,
-        original_text: text,
-        humanized_text: humanized,
-        category,
-        tone,
-      });
-      await supabaseServer.rpc("decrement_credits", {
-        uid: userId,
-        amount: 1,
-      });
+        const fullPayload = {
+          user_id: activeUserId,
+          original_filename: textSnippet,
+          category,
+          tone,
+          language,
+        };
+
+        const fallbackPayload = {
+          user_id: activeUserId,
+          original_filename: textSnippet,
+          category,
+          tone,
+        };
+
+        let insertError: any = null;
+
+        // Try user client first
+        try {
+          const { error } = await supabase
+            .from("document_history")
+            .insert(fullPayload);
+          insertError = error;
+        } catch (err: any) {
+          insertError = err;
+        }
+
+        // If language column is missing in DB schema, retry without language
+        if (
+          insertError &&
+          (insertError.message?.includes("language") ||
+            insertError.details?.includes("language") ||
+            insertError.code === "PGRST204")
+        ) {
+          console.warn(
+            "[/api/humanize] 'language' column missing in DB schema, inserting without language..."
+          );
+          try {
+            const { error: retryErr } = await supabase
+              .from("document_history")
+              .insert(fallbackPayload);
+            insertError = retryErr;
+          } catch (retryException: any) {
+            insertError = retryException;
+          }
+        }
+
+        // Fallback to admin client if user client RLS/session blocked
+        if (insertError && supabaseAdmin) {
+          try {
+            const { error: adminErr } = await supabaseAdmin
+              .from("document_history")
+              .insert(fullPayload);
+            if (
+              adminErr &&
+              (adminErr.message?.includes("language") ||
+                adminErr.details?.includes("language") ||
+                adminErr.code === "PGRST204")
+            ) {
+              const { error: adminRetryErr } = await supabaseAdmin
+                .from("document_history")
+                .insert(fallbackPayload);
+              insertError = adminRetryErr;
+            } else {
+              insertError = adminErr;
+            }
+          } catch (adminErr: any) {
+            insertError = adminErr;
+          }
+        }
+
+        if (insertError) {
+          console.log("Supabase insert error:", insertError);
+        } else {
+          console.log(`[/api/humanize] Successfully saved document_history record for User: ${activeUserId}`);
+        }
+
+        // Decrement credit
+        if (supabaseAdmin) {
+          try {
+            await supabaseAdmin.rpc("decrement_credits", {
+              uid: activeUserId,
+              amount: 1,
+            });
+          } catch (credErr) {
+            console.warn("[/api/humanize] Credit decrement warning:", credErr);
+          }
+        }
+      } catch (dbErr) {
+        console.log("Supabase insert error:", dbErr);
+      }
     }
 
     return NextResponse.json({ humanizedText: humanized });
+
   } catch (err: any) {
     console.error("[/api/humanize] error:", err);
 

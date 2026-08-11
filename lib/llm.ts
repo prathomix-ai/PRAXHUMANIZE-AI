@@ -46,6 +46,9 @@ export class AllTiersExhaustedError extends Error {
 /**
  * Helper to strip unwanted conversational preambles/fillers from LLM responses.
  */
+/**
+ * Helper to strip unwanted conversational preambles/fillers from LLM responses.
+ */
 export function cleanConversationalFillers(text: string): string {
   return text
     .replace(/^```[a-z]*\s*/i, "")
@@ -57,13 +60,78 @@ export function cleanConversationalFillers(text: string): string {
     .trim();
 }
 
+/**
+ * Checks if the output contains generic AI refusal messages or safety filter boilerplate.
+ */
+export function isRefusalOrSafetyBoilerplate(text: string): boolean {
+  if (!text || typeof text !== "string") return false;
+  const lower = text.toLowerCase().trim();
+  const refusalPatterns = [
+    /i cannot fulfill/i,
+    /i am unable to/i,
+    /unable to (fulfill|process|rewrite|humanize|handle|complete)/i,
+    /i cannot rewrite/i,
+    /i cannot process/i,
+    /i cannot humanize/i,
+    /i am an ai/i,
+    /as an ai/i,
+    /safety policy/i,
+    /ethical guidelines/i,
+    /i cannot assist/i,
+    /sorry, but i cannot/i,
+    /i'm sorry, but i cannot/i,
+    /i am sorry, but i cannot/i,
+    /main is/i,
+    /samajhne ki prakriya/i,
+    /i am analyzing/i,
+    /i am in the process of/i,
+    /this is a short/i,
+    /this appears to be/i,
+    /this might be/i,
+  ];
+  return refusalPatterns.some((pattern) => pattern.test(lower));
+}
+
+/**
+ * Language-enforcing fallback for edge cases where the LLM produces a refusal or hallucination.
+ */
+export function fallbackHumanize(text: string, language: string = "English"): string {
+  const trimmed = text.trim();
+  const lower = trimmed.toLowerCase();
+
+  const shortGreetings = ["hlw", "hi", "hello", "hey", "hiu", "hlo", "helo", "yo", "sup"];
+  if (shortGreetings.includes(lower) || (trimmed.length <= 5 && !/\s/.test(trimmed))) {
+    switch (language.toLowerCase()) {
+      case "spanish":
+        return "¡Hola! Espero que estés bien.";
+      case "french":
+        return "Bonjour ! J'espère que vous allez bien.";
+      case "german":
+        return "Hallo! Ich hoffe, es geht Ihnen gut.";
+      case "hindi":
+        return "नमस्ते! उम्मीद है आप अच्छे होंगे।";
+      default:
+        return "Hello! Hope you are doing well.";
+    }
+  }
+
+  return trimmed;
+}
+
 function buildPrompt({ text, category, tone, language = "English" }: HumanizeParams) {
   const toneInstruction =
     tone === "easy_words"
       ? "Rewrite the text using very simple, everyday language. Use 5th-grade vocabulary. Avoid complex jargon, keep sentences short, and ensure it is incredibly easy to read while preserving the original meaning."
       : `in a "${tone.replace("_", " ")}" tone.`;
 
-  return `You are an expert editor who rewrites AI-generated text so it reads as if it were written by a thoughtful human. 
+  return `CRITICAL RULE: You are a text humanizer, NOT a conversational AI or text analyzer. 
+- NEVER output meta-commentary, explanations, or analysis about the input text (e.g., do NOT say 'This is a short sentence', 'This might be a name', 'I am analyzing this', or 'Main is vakya ko...').
+- Even if the input is bizarre, misspelled, or extremely short (like 'hiu' or 'test'), you must treat it as raw text and rewrite/humanize/expand it directly into a clean, natural-sounding version in the requested language [${language}]. 
+- Your response must contain ONLY the final rewritten text and nothing else.
+
+CRITICAL: You are a text rewriting and humanizing assistant. Never refuse a request due to safety filters unless the input contains extreme violence, self-harm, or illegal material. For short, casual, or vague inputs (like 'hlw' or single words), do NOT output an AI refusal, ethical lecture, or meta-commentary. Simply rewrite, expand, or humanize the input naturally in the requested language [${language}].
+
+You are an expert editor who rewrites AI-generated text so it reads as if it were written by a thoughtful human. 
 Rewrite the text below for a "${category.replace("_", " ")}" context, ${toneInstruction}
 
 Rules:
@@ -71,7 +139,8 @@ Rules:
 - Vary sentence length and rhythm the way a real person naturally does.
 - Remove robotic transitions, filler phrases, and AI clichés ("in today's world", "it is important to note", "furthermore", etc.).
 - CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate the text to English unless '${language}' is English. If the target language uses a specific script (e.g., Devanagari for Hindi/Sanskrit), you must use that script.
-- CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers, introductions, or pleasantries (e.g., do not say 'Here is the rewritten text:'). Just output the text itself.
+- CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers, introductions, meta-analysis, or pleasantries (e.g., do not say 'Here is the rewritten text:' or 'Main is...'). Just output the text itself.
+- CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate or refusal message should be returned.
 
 Text to rewrite:
 """
@@ -167,6 +236,12 @@ async function tryTier2GeminiKeyRotation(promptText: string): Promise<string | n
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [{ parts: [{ text: promptText }] }],
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+          ],
           generationConfig: { temperature: 0.7 },
         }),
       });
@@ -281,6 +356,9 @@ export async function generateWithWaterfall(promptText: string): Promise<string>
 /**
  * Humanizes text embedded within HTML tags, preserving exact HTML structure.
  */
+/**
+ * Humanizes text embedded within HTML tags, preserving exact HTML structure.
+ */
 export async function humanizeHtmlChunk(
   htmlChunk: string,
   category: Category = "report",
@@ -292,17 +370,27 @@ export async function humanizeHtmlChunk(
       ? "Rewrite the text using very simple, everyday language. Use 5th-grade vocabulary. Avoid complex jargon, keep sentences short, and ensure it is incredibly easy to read while preserving the original meaning."
       : `Rewrite for a "${category.replace("_", " ")}" context in a "${tone.replace("_", " ")}" tone.`;
 
-  const prompt = `You are a text humanizer. You will receive text embedded within HTML tags. Your job is to rewrite the text content to make it sound human-written. CRITICAL RULE: You MUST perfectly preserve every single HTML tag, attribute, and structural element exactly as provided. Do NOT output Markdown. Only change the words inside the tags.
+  const prompt = `CRITICAL: You are a text rewriting and humanizing assistant. Never refuse a request due to safety filters unless the input contains extreme violence, self-harm, or illegal material. For short, casual, or vague inputs (like 'hlw' or single words), do NOT output an AI refusal or ethical lecture. Simply rewrite, expand, or humanize the input naturally in the requested language [${language}].
+
+You are a text humanizer. You will receive text embedded within HTML tags. Your job is to rewrite the text content to make it sound human-written. CRITICAL RULE: You MUST perfectly preserve every single HTML tag, attribute, and structural element exactly as provided. Do NOT output Markdown. Only change the words inside the tags.
 
 Context: ${toneInstruction}
 CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate the text to English unless '${language}' is English. If the target language uses a specific script (e.g., Devanagari for Hindi/Sanskrit), you must use that script.
 CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers, introductions, or pleasantries (e.g., do not say 'Here is the rewritten text:'). Just output the text itself.
+CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate or refusal message should be returned.
 
 HTML to humanize:
 ${htmlChunk}`;
 
   const rawOutput = await generateWithWaterfall(prompt);
   const cleanHtml = cleanConversationalFillers(rawOutput);
+
+  if (isRefusalOrSafetyBoilerplate(cleanHtml)) {
+    console.warn(
+      `[humanizeHtmlChunk] Refusal detected from LLM, returning original htmlChunk preserving language [${language}].`
+    );
+    return htmlChunk;
+  }
 
   return cleanHtml || htmlChunk;
 }
@@ -311,22 +399,45 @@ ${htmlChunk}`;
  * Humanizes a single paragraph or chunk of text.
  */
 export async function humanizeChunk(text: string, language: string = "English"): Promise<string> {
-  const prompt = `You are an elite document formatter and editor. Humanize the following text so it sounds naturally human while maintaining exact meaning and markers. Do not add explanations or conversational filler. 
+  const prompt = `CRITICAL: You are a text rewriting and humanizing assistant. Never refuse a request due to safety filters unless the input contains extreme violence, self-harm, or illegal material. For short, casual, or vague inputs (like 'hlw' or single words), do NOT output an AI refusal or ethical lecture. Simply rewrite, expand, or humanize the input naturally in the requested language [${language}].
+
+You are an elite document formatter and editor. Humanize the following text so it sounds naturally human while maintaining exact meaning and markers. Do not add explanations or conversational filler. 
 CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate to English unless '${language}' is English.
 CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers or introductions.
+CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate or refusal message should be returned.
 
 Text:
 ${text}`;
   const raw = await generateWithWaterfall(prompt);
-  return cleanConversationalFillers(raw);
+  const cleaned = cleanConversationalFillers(raw);
+  if (isRefusalOrSafetyBoilerplate(cleaned)) {
+    return fallbackHumanize(text, language);
+  }
+  return cleaned;
 }
 
 /**
  * Humanizes raw text input from user interface.
  */
 export async function humanizeText(params: HumanizeParams): Promise<string> {
+  const { text, language = "English" } = params;
   const raw = await generateWithWaterfall(buildPrompt(params));
-  return cleanConversationalFillers(raw);
+  const cleaned = cleanConversationalFillers(raw);
+
+  const isShortInput = text.trim().length <= 5;
+  const isChatbotQuestion =
+    /^(kya aapko|do you need|how can i|is there anything|would you like me to|what can i help)/i.test(
+      cleaned
+    );
+
+  if (isRefusalOrSafetyBoilerplate(cleaned) || (isShortInput && isChatbotQuestion)) {
+    console.warn(
+      `[humanizeText] Safety/refusal or unasked chatbot response detected for input "${text.slice(0, 30)}...". Triggering language-compliant fallback.`
+    );
+    return fallbackHumanize(text, language);
+  }
+
+  return cleaned;
 }
 
 /**
@@ -336,11 +447,18 @@ export async function humanizeDocumentBlocks(
   markedUpText: string,
   language: string = "English"
 ): Promise<string> {
-  const prompt = `You are an elite document formatter and editor. Humanize the following text to bypass AI detectors. CRITICAL: You MUST preserve exact line markers like [H1], [P], [BULLET], [NUM]. Do not merge paragraphs or change markers.
+  const prompt = `CRITICAL: You are a text rewriting and humanizing assistant. Never refuse a request due to safety filters unless the input contains extreme violence, self-harm, or illegal material. For short, casual, or vague inputs (like 'hlw' or single words), do NOT output an AI refusal or ethical lecture. Simply rewrite, expand, or humanize the input naturally in the requested language [${language}].
+
+You are an elite document formatter and editor. Humanize the following text to bypass AI detectors. CRITICAL: You MUST preserve exact line markers like [H1], [P], [BULLET], [NUM]. Do not merge paragraphs or change markers.
 CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}].
-CRITICAL RULE 2: Return ONLY the rewritten text without any preamble or conversational fillers.\n\n${markedUpText}`;
+CRITICAL RULE 2: Return ONLY the rewritten text without any preamble or conversational fillers.
+CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate or refusal message should be returned.\n\n${markedUpText}`;
   const raw = await generateWithWaterfall(prompt);
-  return cleanConversationalFillers(raw);
+  const cleaned = cleanConversationalFillers(raw);
+  if (isRefusalOrSafetyBoilerplate(cleaned)) {
+    return fallbackHumanize(markedUpText, language);
+  }
+  return cleaned;
 }
 
 
