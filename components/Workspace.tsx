@@ -7,6 +7,7 @@ import CategoryChips from "./CategoryChips";
 import ToneToggle from "./ToneToggle";
 import LoadingPhrases from "./LoadingPhrases";
 import SkeletonShimmer from "./SkeletonShimmer";
+import LanguageSelect from "./LanguageSelect";
 import type { Category, Tone } from "@/lib/llm";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -23,6 +24,7 @@ export default function Workspace({
 }) {
   const [category, setCategory] = useState<Category>("essay");
   const [tone, setTone] = useState<Tone>("conversational");
+  const [language, setLanguage] = useState("English");
   const [inputText, setInputText] = useState("");
   const [outputText, setOutputText] = useState("");
   const [status, setStatus] = useState<Status>("idle");
@@ -48,14 +50,16 @@ export default function Workspace({
       const res = await fetch("/api/humanize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: inputText, category, tone, userId }),
+        body: JSON.stringify({ text: inputText, category, tone, language, userId }),
       });
+
 
       const data = await res.json();
 
       if (!res.ok) {
-        throw new Error(data.error || "Something went wrong.");
+        throw new Error(data.message || data.error || "Something went wrong.");
       }
+
 
       setOutputText(data.humanizedText);
       setStatus("done");
@@ -146,45 +150,50 @@ export default function Workspace({
               {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
             </span>
 
-            <motion.button
-              onClick={handleHumanize}
-              disabled={!canSubmit}
-              whileTap={canSubmit ? { scale: 0.97 } : undefined}
-              className={`relative flex items-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-semibold transition-opacity ${
-                canSubmit ? "opacity-100" : "cursor-not-allowed opacity-40"
-              }`}
-            >
-              <span className="absolute inset-0 bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
-              {status === "loading" && (
-                <motion.span
-                  className="absolute inset-0 bg-white/20"
-                  animate={{ opacity: [0.15, 0.4, 0.15] }}
-                  transition={{ repeat: Infinity, duration: 1.4 }}
-                />
-              )}
-              <span className="relative flex items-center gap-2 text-white">
-                {status === "loading" ? (
-                  <>
-                    <motion.span
-                      animate={{ rotate: 360 }}
-                      transition={{
-                        repeat: Infinity,
-                        duration: 1,
-                        ease: "linear",
-                      }}
-                    >
-                      <Sparkles size={15} />
-                    </motion.span>
-                    Humanizing
-                  </>
-                ) : (
-                  <>
-                    Humanize <ArrowRight size={15} />
-                  </>
+            <div className="flex items-center gap-2.5">
+              <LanguageSelect value={language} onChange={setLanguage} />
+
+              <motion.button
+                onClick={handleHumanize}
+                disabled={!canSubmit}
+                whileTap={canSubmit ? { scale: 0.97 } : undefined}
+                className={`relative flex items-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-semibold transition-opacity ${
+                  canSubmit ? "opacity-100" : "cursor-not-allowed opacity-40"
+                }`}
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
+                {status === "loading" && (
+                  <motion.span
+                    className="absolute inset-0 bg-white/20"
+                    animate={{ opacity: [0.15, 0.4, 0.15] }}
+                    transition={{ repeat: Infinity, duration: 1.4 }}
+                  />
                 )}
-              </span>
-            </motion.button>
+                <span className="relative flex items-center gap-2 text-white">
+                  {status === "loading" ? (
+                    <>
+                      <motion.span
+                        animate={{ rotate: 360 }}
+                        transition={{
+                          repeat: Infinity,
+                          duration: 1,
+                          ease: "linear",
+                        }}
+                      >
+                        <Sparkles size={15} />
+                      </motion.span>
+                      Humanizing
+                    </>
+                  ) : (
+                    <>
+                      Humanize <ArrowRight size={15} />
+                    </>
+                  )}
+                </span>
+              </motion.button>
+            </div>
           </div>
+
         </motion.div>
 
         {/* OUTPUT */}

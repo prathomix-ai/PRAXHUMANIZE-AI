@@ -6,10 +6,12 @@ import type { Tone } from "@/lib/llm";
 const TONES: { id: Tone; label: string }[] = [
   { id: "professional", label: "Professional" },
   { id: "conversational", label: "Conversational" },
+  { id: "easy_words", label: "Easy Words" },
   { id: "empathetic", label: "Empathetic" },
   { id: "witty", label: "Witty" },
   { id: "academic", label: "Academic" },
 ];
+
 
 export default function ToneToggle({
   value,

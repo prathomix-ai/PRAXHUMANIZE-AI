@@ -5,10 +5,11 @@ import {
   processDocxWithHtmlPipeline,
   processPdfWithHtmlPipeline,
 } from "@/lib/fileProcessing/htmlPipeline";
+import { processPptxWithPipeline } from "@/lib/fileProcessing/pptxPipeline";
 import type { Category, Tone } from "@/lib/llm";
 
 export const runtime = "nodejs";
-export const maxDuration = 120; // 2 minutes for sequential chunk processing
+export const maxDuration = 60; // 60 seconds Vercel hobby timeout limit
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10MB
 
@@ -33,6 +34,7 @@ export async function POST(req: NextRequest) {
     const file = formData.get("file") as File | null;
     const category = (formData.get("category") as Category) || "report";
     const tone = (formData.get("tone") as Tone) || "professional";
+    const language = (formData.get("language") as string) || "English";
 
     if (!file) {
       return NextResponse.json({ error: "No file was uploaded." }, { status: 400 });
@@ -46,13 +48,13 @@ export async function POST(req: NextRequest) {
 
     const fileName = file.name;
     const ext = fileName.split(".").pop()?.toLowerCase();
-    if (ext !== "pdf" && ext !== "docx") {
+    if (ext !== "pdf" && ext !== "docx" && ext !== "pptx") {
       return NextResponse.json(
-        { error: "Only .pdf and .docx files are supported." },
+        { error: "Only .pdf, .docx, and .pptx files are supported." },
         { status: 400 }
       );
     }
-    const fileType = ext as "pdf" | "docx";
+    const fileType = ext as "pdf" | "docx" | "pptx";
 
     // ---- 3. Verify / Manage user credits safely --------------------------
     let creditsRemaining = 10;
@@ -88,11 +90,14 @@ export async function POST(req: NextRequest) {
     const inputBuffer = Buffer.from(arrayBuffer);
 
     let outputBuffer: Buffer;
-    if (fileType === "docx") {
-      outputBuffer = await processDocxWithHtmlPipeline(inputBuffer, category, tone);
+    if (fileType === "pptx") {
+      outputBuffer = await processPptxWithPipeline(inputBuffer, category, tone, language);
+    } else if (fileType === "docx") {
+      outputBuffer = await processDocxWithHtmlPipeline(inputBuffer, category, tone, language);
     } else {
-      outputBuffer = await processPdfWithHtmlPipeline(inputBuffer, category, tone, "pdf");
+      outputBuffer = await processPdfWithHtmlPipeline(inputBuffer, category, tone, "pdf", language);
     }
+
 
     if (!outputBuffer || outputBuffer.length === 0) {
       return NextResponse.json(
@@ -132,6 +137,8 @@ export async function POST(req: NextRequest) {
     const contentType =
       fileType === "pdf"
         ? "application/pdf"
+        : fileType === "pptx"
+        ? "application/vnd.openxmlformats-officedocument.presentationml.presentation"
         : "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 
     return new NextResponse(new Uint8Array(outputBuffer), {
@@ -141,6 +148,7 @@ export async function POST(req: NextRequest) {
         "Content-Disposition": `attachment; filename="${downloadFileName}"`,
       },
     });
+
   } catch (err: any) {
     console.error("[/api/process-file] Route execution error:", err);
 

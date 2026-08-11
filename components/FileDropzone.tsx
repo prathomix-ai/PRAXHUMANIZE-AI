@@ -14,12 +14,14 @@ import {
 import CategoryChips from "./CategoryChips";
 import ToneToggle from "./ToneToggle";
 import LoadingPhrases from "./LoadingPhrases";
+import LanguageSelect from "./LanguageSelect";
 import type { Category, Tone } from "@/lib/llm";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type Status = "idle" | "uploading" | "done" | "error";
 
-const ACCEPTED_EXT = [".pdf", ".docx"];
+const ACCEPTED_EXT = [".pdf", ".docx", ".pptx"];
+
 
 export default function FileDropzone({
   onProcessed,
@@ -30,6 +32,7 @@ export default function FileDropzone({
   const [file, setFile] = useState<File | null>(null);
   const [category, setCategory] = useState<Category>("report");
   const [tone, setTone] = useState<Tone>("professional");
+  const [language, setLanguage] = useState("English");
   const [status, setStatus] = useState<Status>("idle");
   const [error, setError] = useState("");
 
@@ -53,9 +56,10 @@ export default function FileDropzone({
   const validateAndSetFile = useCallback((f: File) => {
     const ext = f.name.slice(f.name.lastIndexOf(".")).toLowerCase();
     if (!ACCEPTED_EXT.includes(ext)) {
-      setError("Only .pdf and .docx files are supported.");
+      setError("Only .pdf, .docx, and .pptx files are supported.");
       return;
     }
+
     if (f.size > 10 * 1024 * 1024) {
       setError("File is too large. Max size is 10MB.");
       return;
@@ -95,6 +99,8 @@ export default function FileDropzone({
       formData.append("file", file);
       formData.append("category", category);
       formData.append("tone", tone);
+      formData.append("language", language);
+
 
       const res = await fetch("/api/process-file", {
         method: "POST",
@@ -275,7 +281,7 @@ export default function FileDropzone({
         <input
           ref={inputRef}
           type="file"
-          accept=".pdf,.docx"
+          accept=".pdf,.docx,.pptx"
           className="hidden"
           onChange={handleBrowse}
         />
@@ -320,7 +326,7 @@ export default function FileDropzone({
                 Drag & drop your document
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                or click to browse — .PDF or .DOCX, up to 10MB
+                or click to browse — .PDF, .DOCX, or .PPTX, up to 10MB
               </p>
             </motion.div>
           )}
@@ -337,6 +343,8 @@ export default function FileDropzone({
               <div className="mb-4 flex w-full items-center gap-3 rounded-xl glass-inset px-4 py-3">
                 {file.name.endsWith(".pdf") ? (
                   <FileText size={20} className="shrink-0 text-rose-400" />
+                ) : file.name.endsWith(".pptx") ? (
+                  <FileIcon size={20} className="shrink-0 text-amber-400" />
                 ) : (
                   <FileIcon size={20} className="shrink-0 text-aurora-blue" />
                 )}
@@ -346,6 +354,7 @@ export default function FileDropzone({
                     {(file.size / 1024).toFixed(0)} KB
                   </p>
                 </div>
+
                 {status !== "uploading" && (
                   <button
                     type="button"
@@ -360,18 +369,22 @@ export default function FileDropzone({
               {status === "uploading" ? (
                 <LoadingPhrases />
               ) : (
-                <motion.button
-                  type="button"
-                  onClick={handleHumanize}
-                  whileTap={{ scale: 0.97 }}
-                  className="relative flex items-center gap-2 overflow-hidden rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
-                >
-                  <span className="absolute inset-0 bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
-                  <span className="relative flex items-center gap-2">
-                    <Sparkles size={15} /> Humanize Document
-                  </span>
-                </motion.button>
+                <div className="flex items-center gap-2.5">
+                  <LanguageSelect value={language} onChange={setLanguage} />
+                  <motion.button
+                    type="button"
+                    onClick={handleHumanize}
+                    whileTap={{ scale: 0.97 }}
+                    className="relative flex items-center gap-2 overflow-hidden rounded-xl px-6 py-2.5 text-sm font-semibold text-white"
+                  >
+                    <span className="absolute inset-0 bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
+                    <span className="relative flex items-center gap-2">
+                      <Sparkles size={15} /> Humanize Document
+                    </span>
+                  </motion.button>
+                </div>
               )}
+
             </motion.div>
           )}
 

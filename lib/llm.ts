@@ -20,12 +20,14 @@ export type Tone =
   | "conversational"
   | "empathetic"
   | "witty"
-  | "academic";
+  | "academic"
+  | "easy_words";
 
-interface HumanizeParams {
+export interface HumanizeParams {
   text: string;
   category: Category;
   tone: Tone;
+  language?: string;
 }
 
 /**
@@ -41,15 +43,35 @@ export class AllTiersExhaustedError extends Error {
   }
 }
 
-function buildPrompt({ text, category, tone }: HumanizeParams) {
+/**
+ * Helper to strip unwanted conversational preambles/fillers from LLM responses.
+ */
+export function cleanConversationalFillers(text: string): string {
+  return text
+    .replace(/^```[a-z]*\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .replace(
+      /^(here is|here's|here are|sure, here is|sure, here's|below is|here is the rewritten|here is the humanized|certainly! here is|certainly, here is|sure! here is)[\s\S]*?:\s*\n?/i,
+      ""
+    )
+    .trim();
+}
+
+function buildPrompt({ text, category, tone, language = "English" }: HumanizeParams) {
+  const toneInstruction =
+    tone === "easy_words"
+      ? "Rewrite the text using very simple, everyday language. Use 5th-grade vocabulary. Avoid complex jargon, keep sentences short, and ensure it is incredibly easy to read while preserving the original meaning."
+      : `in a "${tone.replace("_", " ")}" tone.`;
+
   return `You are an expert editor who rewrites AI-generated text so it reads as if it were written by a thoughtful human. 
-Rewrite the text below for a "${category.replace("_", " ")}" context, in a "${tone}" tone.
+Rewrite the text below for a "${category.replace("_", " ")}" context, ${toneInstruction}
 
 Rules:
 - Keep the original meaning and every factual claim intact.
 - Vary sentence length and rhythm the way a real person naturally does.
 - Remove robotic transitions, filler phrases, and AI clichés ("in today's world", "it is important to note", "furthermore", etc.).
-- Do not add a preamble, explanation, or quotation marks — return ONLY the rewritten text.
+- CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate the text to English unless '${language}' is English. If the target language uses a specific script (e.g., Devanagari for Hindi/Sanskrit), you must use that script.
+- CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers, introductions, or pleasantries (e.g., do not say 'Here is the rewritten text:'). Just output the text itself.
 
 Text to rewrite:
 """
@@ -57,23 +79,30 @@ ${text}
 """`;
 }
 
+
+
 /**
- * Tier 1: Local Laptop (Ollama via LOCAL_OLLAMA_URL) with strict 5-second timeout.
+ * Tier 1: Local Laptop (Ollama via LOCAL_OLLAMA_URL) with 60-second timeout.
  */
 async function tryTier1Ollama(promptText: string): Promise<string | null> {
-  const baseUrl = (
+  const rawUrl = (
     process.env.LOCAL_OLLAMA_URL ||
     process.env.OLLAMA_BASE_URL ||
     "http://127.0.0.1:11434"
-  ).replace(/\/$/, "");
+  ).trim();
+
+  const cleanUrl = rawUrl.replace(/\/$/, "");
+  const endpoint = cleanUrl.endsWith("/api/generate")
+    ? cleanUrl
+    : `${cleanUrl}/api/generate`;
+
   const model = process.env.OLLAMA_MODEL || "llama3.1:latest";
-  const endpoint = `${baseUrl}/api/generate`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s strict timeout
+  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for local LLM generation
 
   try {
-    console.log(`[Waterfall Tier 1] Connecting to local Ollama at ${endpoint} (5s timeout)...`);
+    console.log(`[Waterfall Tier 1] Connecting to local Ollama at ${endpoint} (60s timeout)...`);
     const res = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -87,7 +116,8 @@ async function tryTier1Ollama(promptText: string): Promise<string | null> {
     clearTimeout(timeoutId);
 
     if (!res.ok) {
-      console.warn(`[Waterfall Tier 1 Failed] Ollama returned status ${res.status}`);
+      const errBody = await res.text().catch(() => "");
+      console.warn(`[Waterfall Tier 1 Failed] Ollama status ${res.status}: ${errBody}`);
       return null;
     }
 
@@ -100,13 +130,14 @@ async function tryTier1Ollama(promptText: string): Promise<string | null> {
   } catch (err: any) {
     clearTimeout(timeoutId);
     if (err?.name === "AbortError") {
-      console.warn("[Waterfall Tier 1 Failed] Local Ollama timed out (5s limit reached).");
+      console.warn("[Waterfall Tier 1 Failed] Local Ollama timed out (60s limit reached).");
     } else {
       console.warn(`[Waterfall Tier 1 Failed] Local Ollama error: ${err?.message || err}`);
     }
     return null;
   }
 }
+
 
 /**
  * Tier 2: Gemini API Key Rotation (GEMINI_API_KEYS="key1,key2,key3...")
@@ -253,23 +284,25 @@ export async function generateWithWaterfall(promptText: string): Promise<string>
 export async function humanizeHtmlChunk(
   htmlChunk: string,
   category: Category = "report",
-  tone: Tone = "professional"
+  tone: Tone = "professional",
+  language: string = "English"
 ): Promise<string> {
+  const toneInstruction =
+    tone === "easy_words"
+      ? "Rewrite the text using very simple, everyday language. Use 5th-grade vocabulary. Avoid complex jargon, keep sentences short, and ensure it is incredibly easy to read while preserving the original meaning."
+      : `Rewrite for a "${category.replace("_", " ")}" context in a "${tone.replace("_", " ")}" tone.`;
+
   const prompt = `You are a text humanizer. You will receive text embedded within HTML tags. Your job is to rewrite the text content to make it sound human-written. CRITICAL RULE: You MUST perfectly preserve every single HTML tag, attribute, and structural element exactly as provided. Do NOT output Markdown. Only change the words inside the tags.
 
-Context: Rewrite for a "${category.replace("_", " ")}" context in a "${tone}" tone.
+Context: ${toneInstruction}
+CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate the text to English unless '${language}' is English. If the target language uses a specific script (e.g., Devanagari for Hindi/Sanskrit), you must use that script.
+CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers, introductions, or pleasantries (e.g., do not say 'Here is the rewritten text:'). Just output the text itself.
 
 HTML to humanize:
 ${htmlChunk}`;
 
   const rawOutput = await generateWithWaterfall(prompt);
-
-  // Clean up any accidental markdown codeblock wrappers if LLM returns ```html ... ```
-  let cleanHtml = rawOutput
-    .replace(/^```html\s*/i, "")
-    .replace(/^```\s*/i, "")
-    .replace(/\s*```$/i, "")
-    .trim();
+  const cleanHtml = cleanConversationalFillers(rawOutput);
 
   return cleanHtml || htmlChunk;
 }
@@ -277,23 +310,37 @@ ${htmlChunk}`;
 /**
  * Humanizes a single paragraph or chunk of text.
  */
-export async function humanizeChunk(text: string): Promise<string> {
-  const prompt = `You are an elite document formatter and editor. Humanize the following text so it sounds naturally human while maintaining exact meaning and markers. Do not add explanations or conversational filler. Return ONLY the rewritten text.\n\n${text}`;
-  return generateWithWaterfall(prompt);
+export async function humanizeChunk(text: string, language: string = "English"): Promise<string> {
+  const prompt = `You are an elite document formatter and editor. Humanize the following text so it sounds naturally human while maintaining exact meaning and markers. Do not add explanations or conversational filler. 
+CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate to English unless '${language}' is English.
+CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers or introductions.
+
+Text:
+${text}`;
+  const raw = await generateWithWaterfall(prompt);
+  return cleanConversationalFillers(raw);
 }
 
 /**
  * Humanizes raw text input from user interface.
  */
 export async function humanizeText(params: HumanizeParams): Promise<string> {
-  return generateWithWaterfall(buildPrompt(params));
+  const raw = await generateWithWaterfall(buildPrompt(params));
+  return cleanConversationalFillers(raw);
 }
 
 /**
  * Humanizes raw document blocks.
  */
-export async function humanizeDocumentBlocks(markedUpText: string): Promise<string> {
-  const prompt = `You are an elite document formatter and editor. Humanize the following text to bypass AI detectors. CRITICAL: You MUST preserve exact line markers like [H1], [P], [BULLET], [NUM]. Do not merge paragraphs or change markers. Return ONLY the rewritten text.\n\n${markedUpText}`;
-  return generateWithWaterfall(prompt);
+export async function humanizeDocumentBlocks(
+  markedUpText: string,
+  language: string = "English"
+): Promise<string> {
+  const prompt = `You are an elite document formatter and editor. Humanize the following text to bypass AI detectors. CRITICAL: You MUST preserve exact line markers like [H1], [P], [BULLET], [NUM]. Do not merge paragraphs or change markers.
+CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}].
+CRITICAL RULE 2: Return ONLY the rewritten text without any preamble or conversational fillers.\n\n${markedUpText}`;
+  const raw = await generateWithWaterfall(prompt);
+  return cleanConversationalFillers(raw);
 }
+
 

@@ -101,7 +101,8 @@ function escapeHtml(text: string): string {
 export async function processDocxWithHtmlPipeline(
   buffer: Buffer,
   category: Category = "report",
-  tone: Tone = "professional"
+  tone: Tone = "professional",
+  language: string = "English"
 ): Promise<Buffer> {
   // 1. Convert DOCX to rich semantic HTML via Mammoth
   const { value: rawHtml } = await mammoth.convertToHtml({ buffer });
@@ -112,10 +113,10 @@ export async function processDocxWithHtmlPipeline(
   // 2. Split HTML into safe chunks by block tags
   const chunks = splitHtmlIntoChunks(htmlToProcess, 2500);
 
-  // 3. Process each HTML chunk sequentially through Ollama
+  // 3. Process each HTML chunk sequentially through LLM
   const humanizedChunks: string[] = [];
   for (const chunk of chunks) {
-    const humanizedChunk = await humanizeHtmlChunk(chunk, category, tone);
+    const humanizedChunk = await humanizeHtmlChunk(chunk, category, tone, language);
     humanizedChunks.push(humanizedChunk);
   }
 
@@ -139,7 +140,8 @@ export async function processPdfWithHtmlPipeline(
   buffer: Buffer,
   category: Category = "report",
   tone: Tone = "professional",
-  outputType: "docx" | "pdf" = "pdf"
+  outputType: "docx" | "pdf" = "pdf",
+  language: string = "English"
 ): Promise<Buffer> {
   const blocks = await extractPdf(buffer);
   const rawHtml = blocksToHtml(blocks);
@@ -148,11 +150,12 @@ export async function processPdfWithHtmlPipeline(
   const humanizedChunks: string[] = [];
 
   for (const chunk of chunks) {
-    const humanizedChunk = await humanizeHtmlChunk(chunk, category, tone);
+    const humanizedChunk = await humanizeHtmlChunk(chunk, category, tone, language);
     humanizedChunks.push(humanizedChunk);
   }
 
   const finalHtml = humanizedChunks.join("\n");
+
 
   if (outputType === "docx") {
     const docxBuffer = await HTMLtoDOCX(finalHtml, null, {

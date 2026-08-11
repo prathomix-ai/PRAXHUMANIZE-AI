@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { humanizeText, type Category, type Tone } from "@/lib/llm";
 import { supabaseAdmin as supabaseServer } from "@/lib/supabase/admin";
 
+export const maxDuration = 60;
+
 const VALID_CATEGORIES: Category[] = [
   "report",
   "website_copy",
@@ -17,15 +19,18 @@ const VALID_TONES: Tone[] = [
   "empathetic",
   "witty",
   "academic",
+  "easy_words",
 ];
+
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { text, category, tone, userId } = body as {
+    const { text, category, tone, language = "English", userId } = body as {
       text?: string;
       category?: Category;
       tone?: Tone;
+      language?: string;
       userId?: string;
     };
 
@@ -71,8 +76,9 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // --- Call the LLM (see lib/llm.ts to swap providers) ---
-    const humanized = await humanizeText({ text, category, tone });
+    // --- Call the LLM ---
+    const humanized = await humanizeText({ text, category, tone, language });
+
 
     // --- Persist to history + spend a credit (best-effort, non-blocking) ---
     if (userId) {
@@ -90,11 +96,34 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ humanizedText: humanized });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[/api/humanize] error:", err);
+
+    const isServerDown =
+      err?.isServerDown ||
+      err?.name === "AllTiersExhaustedError" ||
+      err?.message?.includes("high load") ||
+      err?.message?.includes("exhausted");
+
+    if (isServerDown) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "Server is currently experiencing high load. Please try again in a few minutes.",
+          isServerDown: true,
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Something went wrong while humanizing your text. Try again." },
+      {
+        success: false,
+        error: err?.message || "Something went wrong while humanizing your text. Try again.",
+        message: err?.message || "Something went wrong while humanizing your text. Try again.",
+      },
       { status: 500 }
     );
   }
 }
+
