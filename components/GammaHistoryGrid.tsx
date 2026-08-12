@@ -7,14 +7,11 @@ import {
   File as FileIcon,
   Loader2,
   Sparkles,
-  Search,
   ExternalLink,
   Copy,
   Check,
   Globe,
-  Tag,
   Clock,
-  Layers,
   Plus,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -22,18 +19,26 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 export interface DocumentHistoryRow {
   id: string;
   user_id: string;
-  original_filename: string;
+  input_type?: string | null;
+  file_name?: string | null;
+  original_filename?: string | null;
+  file_url?: string | null;
+  original_text?: string | null;
+  humanized_text?: string | null;
   category: string | null;
   tone: string | null;
   language?: string | null;
+  status?: string | null;
   created_at: string;
+  updated_at?: string | null;
 }
 
 interface GammaHistoryGridProps {
   refreshKey?: number;
   searchQuery: string;
   filterTab: string;
-  onSelectDocument?: (doc: DocumentHistoryRow) => void;
+  onSelectDocument?: (doc: DocumentHistoryRow | null) => void;
+  onNewProject?: () => void;
 }
 
 export default function GammaHistoryGrid({
@@ -41,6 +46,7 @@ export default function GammaHistoryGrid({
   searchQuery,
   filterTab,
   onSelectDocument,
+  onNewProject,
 }: GammaHistoryGridProps) {
   const [rows, setRows] = useState<DocumentHistoryRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,14 +57,27 @@ export default function GammaHistoryGrid({
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchErr } = await supabaseBrowser
+      // 1. Get Current User securely
+      const {
+        data: { user },
+      } = await supabaseBrowser.auth.getUser();
+
+      if (!user) {
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Fetch User's History matching user_id
+      const { data: history, error: fetchErr } = await supabaseBrowser
         .from("document_history")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (fetchErr) throw fetchErr;
 
-      setRows((data as DocumentHistoryRow[]) || []);
+      setRows((history as DocumentHistoryRow[]) || []);
     } catch (err: any) {
       console.error("Error fetching document history:", err);
       setError(err?.message || "Failed to load document history.");
@@ -78,9 +97,18 @@ export default function GammaHistoryGrid({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const handleNewProjectClick = () => {
+    if (onNewProject) {
+      onNewProject();
+    } else if (onSelectDocument) {
+      onSelectDocument(null);
+    }
+  };
+
   // Filter rows based on search and selected filter tab
   const filteredRows = rows.filter((row) => {
-    const filename = row.original_filename?.toLowerCase() || "";
+    const rawName = row.original_filename || row.original_text || "";
+    const filename = rawName.toLowerCase();
     const category = row.category?.toLowerCase() || "";
     const tone = row.tone?.toLowerCase() || "";
     const q = searchQuery.toLowerCase().trim();
@@ -92,7 +120,10 @@ export default function GammaHistoryGrid({
 
     const isPdf = filename.endsWith(".pdf");
     const isDocx = filename.endsWith(".docx");
-    const isText = !isPdf && !isDocx || filename.includes("pasted") || filename.includes("text");
+    const isText =
+      (!isPdf && !isDocx) ||
+      filename.includes("pasted") ||
+      filename.includes("text");
 
     if (filterTab === "documents") return isPdf || isDocx;
     if (filterTab === "text") return isText;
@@ -120,22 +151,6 @@ export default function GammaHistoryGrid({
     );
   }
 
-  if (filteredRows.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-slate-500 glass rounded-3xl p-10 border border-white/10 text-center">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-aurora-violet/10 border border-aurora-violet/20 text-aurora-violet mb-4">
-          <Sparkles size={28} />
-        </div>
-        <h3 className="text-lg font-bold text-slate-200">No matching humanizations found</h3>
-        <p className="mt-1 text-sm text-slate-400 max-w-sm">
-          {searchQuery
-            ? `No records found matching "${searchQuery}". Try clearing your search.`
-            : "Click '+ New Humanization' above to process your first document or raw text."}
-        </p>
-      </div>
-    );
-  }
-
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
@@ -159,8 +174,44 @@ export default function GammaHistoryGrid({
       className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
     >
       <AnimatePresence mode="popLayout">
-        {filteredRows.map((row, i) => {
-          const lowerName = row.original_filename?.toLowerCase() || "";
+        {/* "+ NEW PROJECT" Card - Always visible alongside dynamic data & empty state */}
+        <motion.div
+          key="new-project-card"
+          variants={cardVariants}
+          whileHover={{ y: -6 }}
+          onClick={handleNewProjectClick}
+          className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-dashed border-aurora-violet/40 bg-slate-950/40 p-6 backdrop-blur-xl transition-all duration-300 hover:border-aurora-violet hover:bg-slate-950/70 hover:shadow-2xl hover:shadow-aurora-violet/20 cursor-pointer min-h-[220px]"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-aurora-violet/15 text-aurora-violet border border-aurora-violet/30 group-hover:scale-110 transition-transform">
+              <Plus size={20} />
+            </div>
+            <span className="rounded-full bg-aurora-violet/20 px-2.5 py-0.5 text-[10px] font-bold text-aurora-violet border border-aurora-violet/30 uppercase tracking-wider">
+              NEW PROJECT
+            </span>
+          </div>
+
+          <div className="space-y-1.5 my-4">
+            <h4 className="font-display text-base font-bold text-slate-100 group-hover:text-white transition-colors">
+              Humanize New Text or File
+            </h4>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Click to launch the humanizer workspace and bypass Turnitin, Originality & GPTZero.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-semibold text-aurora-violet group-hover:text-aurora-violet/80">
+            <span>Start Humanization</span>
+            <ExternalLink size={14} />
+          </div>
+        </motion.div>
+
+        {/* Dynamic Cards from Supabase document_history */}
+        {filteredRows.map((row) => {
+          const rawTitle = row.file_name || row.original_filename || row.original_text || "Untitled Document";
+          const displayTitle = rawTitle.length > 30 ? `${rawTitle.slice(0, 27)}...` : rawTitle;
+
+          const lowerName = rawTitle.toLowerCase();
           const isPdf = lowerName.endsWith(".pdf");
           const isDocx = lowerName.endsWith(".docx");
 
@@ -205,9 +256,9 @@ export default function GammaHistoryGrid({
                   </span>
 
                   <button
-                    onClick={(e) => handleCopyTitle(row.id, row.original_filename, e)}
+                    onClick={(e) => handleCopyTitle(row.id, rawTitle, e)}
                     className="flex h-7 w-7 items-center justify-center rounded-lg glass text-slate-300 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/20 hover:text-white"
-                    title="Copy filename"
+                    title="Copy title"
                   >
                     {copiedId === row.id ? (
                       <Check size={13} className="text-aurora-mint" />
@@ -233,9 +284,9 @@ export default function GammaHistoryGrid({
                 <div>
                   <h4
                     className="font-display text-sm font-bold text-slate-100 group-hover:text-white transition-colors line-clamp-2 leading-snug"
-                    title={row.original_filename}
+                    title={rawTitle}
                   >
-                    {row.original_filename}
+                    {displayTitle}
                   </h4>
                 </div>
 
@@ -243,7 +294,7 @@ export default function GammaHistoryGrid({
                   {/* Badges Row */}
                   <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
                     <span className="inline-flex items-center gap-1 rounded-lg bg-aurora-violet/20 backdrop-blur-md px-2.5 py-1 font-semibold text-aurora-violet border border-aurora-violet/40 capitalize shadow-sm">
-                      <Sparkles size={11} /> {row.tone || "Professional"}
+                      <Sparkles size={11} /> {row.tone || "Standard"}
                     </span>
 
                     {row.language && (
@@ -267,39 +318,6 @@ export default function GammaHistoryGrid({
             </motion.div>
           );
         })}
-
-        {/* Placeholder card if fewer than 3 user documents exist */}
-        {filteredRows.length < 3 && (
-          <motion.div
-            variants={cardVariants}
-            whileHover={{ y: -6 }}
-            onClick={() => onSelectDocument?.(null as any)}
-            className="group relative flex flex-col justify-between overflow-hidden rounded-3xl border border-dashed border-white/20 bg-slate-950/40 p-6 backdrop-blur-xl transition-all duration-300 hover:border-aurora-violet/50 hover:bg-slate-950/70 hover:shadow-xl hover:shadow-aurora-violet/10 cursor-pointer min-h-[220px]"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-aurora-violet/15 text-aurora-violet border border-aurora-violet/30 group-hover:scale-110 transition-transform">
-                <Plus size={20} />
-              </div>
-              <span className="rounded-full bg-aurora-violet/20 px-2.5 py-0.5 text-[10px] font-bold text-aurora-violet border border-aurora-violet/30">
-                NEW PROJECT
-              </span>
-            </div>
-
-            <div className="space-y-1.5 my-4">
-              <h4 className="font-display text-base font-bold text-slate-100 group-hover:text-white transition-colors">
-                Humanize New Text or File
-              </h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Click to launch the humanizer workspace and bypass Turnitin, Originality & GPTZero.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between pt-3 border-t border-white/5 text-xs font-semibold text-aurora-violet">
-              <span>Start Humanization</span>
-              <ExternalLink size={14} />
-            </div>
-          </motion.div>
-        )}
       </AnimatePresence>
     </motion.div>
   );
@@ -307,18 +325,23 @@ export default function GammaHistoryGrid({
 
 // Relative time helper (e.g., "Just now", "2 hours ago", "Yesterday")
 function getRelativeTime(dateString: string): string {
+  if (!dateString) return "Just now";
   const date = new Date(dateString);
   const now = new Date();
   const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
 
-  if (seconds < 60) return "Just now";
+  if (isNaN(seconds) || seconds < 30) return "Just now";
+  if (seconds < 60) return `${seconds}s ago`;
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes === 1) return "1 minute ago";
+  if (minutes < 60) return `${minutes} minutes ago`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
   const days = Math.floor(hours / 24);
   if (days === 1) return "Yesterday";
-  if (days < 7) return `${days}d ago`;
+  if (days < 7) return `${days} days ago`;
 
   return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
+

@@ -108,19 +108,31 @@ export async function POST(req: NextRequest) {
 
     // ---- 5. Insert Record into document_history Table -------------------
     try {
+      const ext = fileName.toLowerCase().endsWith(".pdf")
+        ? "pdf"
+        : fileName.toLowerCase().endsWith(".docx")
+        ? "docx"
+        : "file";
+
       const fullPayload = {
         user_id: userId,
+        input_type: ext,
+        file_name: fileName,
         original_filename: fileName,
         category: category,
         tone: tone,
         language: language,
+        status: "success",
       };
 
       const fallbackPayload = {
         user_id: userId,
+        input_type: ext,
+        file_name: fileName,
         original_filename: fileName,
         category: category,
         tone: tone,
+        status: "success",
       };
 
       let insertError: any = null;

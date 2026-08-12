@@ -94,7 +94,7 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-8 text-xs text-slate-500">
-          <p>© {currentYear} Prathomix Solution. All rights reserved.</p>
+          <p>© {currentYear} PRATHOMIX. All rights reserved.</p>
 
           <div className="flex items-center gap-5 text-slate-400">
             <a

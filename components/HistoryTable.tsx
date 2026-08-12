@@ -23,9 +23,20 @@ export default function HistoryTable({ refreshKey }: { refreshKey?: number }) {
     setLoading(true);
     setError(null);
     try {
+      const {
+        data: { user },
+      } = await supabaseBrowser.auth.getUser();
+
+      if (!user) {
+        setRows([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error: fetchErr } = await supabaseBrowser
         .from("document_history")
         .select("*")
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
 
       if (fetchErr) {

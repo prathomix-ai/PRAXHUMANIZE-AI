@@ -118,34 +118,47 @@ export function fallbackHumanize(text: string, language: string = "English"): st
   return trimmed;
 }
 
-function buildPrompt({ text, category, tone, language = "English" }: HumanizeParams) {
-  const toneInstruction =
-    tone === "easy_words"
-      ? "Rewrite the text using very simple, everyday language. Use 5th-grade vocabulary. Avoid complex jargon, keep sentences short, and ensure it is incredibly easy to read while preserving the original meaning."
-      : `in a "${tone.replace("_", " ")}" tone.`;
+export function buildPrompt(
+  textOrParams: string | HumanizeParams,
+  category?: string,
+  tone?: string,
+  language: string = "English"
+): string {
+  let text = "";
+  let cat = "general";
+  let t = "conversational";
+  let lang = "English";
 
-  return `CRITICAL RULE: You are a text humanizer, NOT a conversational AI or text analyzer. 
-- NEVER output meta-commentary, explanations, or analysis about the input text (e.g., do NOT say 'This is a short sentence', 'This might be a name', 'I am analyzing this', or 'Main is vakya ko...').
-- Even if the input is bizarre, misspelled, or extremely short (like 'hiu' or 'test'), you must treat it as raw text and rewrite/humanize/expand it directly into a clean, natural-sounding version in the requested language [${language}]. 
-- Your response must contain ONLY the final rewritten text and nothing else.
+  if (typeof textOrParams === "object" && textOrParams !== null) {
+    text = textOrParams.text || "";
+    cat = textOrParams.category || "general";
+    t = textOrParams.tone || "conversational";
+    lang = textOrParams.language || "English";
+  } else {
+    text = textOrParams || "";
+    cat = category || "general";
+    t = tone || "conversational";
+    lang = language || "English";
+  }
 
-CRITICAL: You are a text rewriting and humanizing assistant. Never refuse a request due to safety filters unless the input contains extreme violence, self-harm, or illegal material. For short, casual, or vague inputs (like 'hlw' or single words), do NOT output an AI refusal, ethical lecture, or meta-commentary. Simply rewrite, expand, or humanize the input naturally in the requested language [${language}].
+  return `
+You are an expert human writer and editor. Your ONLY goal is to rewrite the provided text so that it reads 100% naturally, uses simple language, and completely bypasses all AI detectors (like Turnitin, GPTZero, Originality.ai) to achieve a 0% AI score.
 
-You are an expert editor who rewrites AI-generated text so it reads as if it were written by a thoughtful human. 
-Rewrite the text below for a "${category.replace("_", " ")}" context, ${toneInstruction}
+STRICT RULES TO ACHIEVE 0% AI DETECTION:
 
-Rules:
-- Keep the original meaning and every factual claim intact.
-- Vary sentence length and rhythm the way a real person naturally does.
-- Remove robotic transitions, filler phrases, and AI clichés ("in today's world", "it is important to note", "furthermore", etc.).
-- CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate the text to English unless '${language}' is English. If the target language uses a specific script (e.g., Devanagari for Hindi/Sanskrit), you must use that script.
-- CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers, introductions, meta-analysis, or pleasantries (e.g., do not say 'Here is the rewritten text:' or 'Main is...'). Just output the text itself.
-- CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate or refusal message should be returned.
+1. ULTRA-SIMPLE VOCABULARY: Use simple, everyday, conversational ${lang}. Write at an 8th-grade reading level. NEVER use complex, overly formal, or "thesaurus-salad" words. The words must be easy to read and natural.
+2. BANNED AI-ISMS: You are STRICTLY FORBIDDEN from using common AI words such as: delve, crucial, multifaceted, underscore, testament, landscape, pivotal, moreover, furthermore, inherently, tapestry, dynamic, seamless, elevate, beacon, robust.
+3. HIGH BURSTINESS (CRITICAL): Humans write with inconsistent rhythm. You MUST mix very short, punchy sentences (3-5 words) with longer, flowing sentences. Never make all sentences the same length or structure.
+4. HIGH PERPLEXITY: Avoid predictable phrasing. Use active voice. Add slight, natural human imperfections in flow (but keep grammar correct).
+5. CONTEXT: The category is ${cat} and the requested tone is ${t}. Adapt to this tone, but NEVER sacrifice simplicity and readability.
 
-Text to rewrite:
+CRITICAL INSTRUCTION: Do not include any intro, outro, apologies, or meta-commentary. Output ONLY the final rewritten text.
+
+Original Text to Humanize:
 """
 ${text}
-"""`;
+"""
+  `.trim();
 }
 
 

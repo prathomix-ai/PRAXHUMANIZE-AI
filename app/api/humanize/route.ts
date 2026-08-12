@@ -92,17 +92,27 @@ export async function POST(req: NextRequest) {
 
         const fullPayload = {
           user_id: activeUserId,
+          input_type: "text",
+          file_name: textSnippet,
           original_filename: textSnippet,
+          original_text: text,
+          humanized_text: humanized,
           category,
           tone,
           language,
+          status: "success",
         };
 
         const fallbackPayload = {
           user_id: activeUserId,
+          input_type: "text",
+          file_name: textSnippet,
           original_filename: textSnippet,
+          original_text: text,
+          humanized_text: humanized,
           category,
           tone,
+          status: "success",
         };
 
         let insertError: any = null;

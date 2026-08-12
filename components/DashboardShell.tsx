@@ -342,6 +342,7 @@ export default function DashboardShell({
               refreshKey={refreshKey}
               searchQuery={searchQuery}
               filterTab={filterTab}
+              onNewProject={() => setIsModalOpen(true)}
             />
           </div>
         </div>
