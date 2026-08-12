@@ -4,6 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Mail, Lock, Loader2, ArrowRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase/client";
+import { getURL } from "@/lib/utils";
 
 type Mode = "sign_in" | "sign_up";
 
@@ -21,7 +22,7 @@ export default function AuthForm({ next }: { next: string }) {
     const { error } = await supabaseBrowser.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        redirectTo: getURL(`/auth/callback?next=${encodeURIComponent(next)}`),
       },
     });
     if (error) {
@@ -53,7 +54,7 @@ export default function AuthForm({ next }: { next: string }) {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          emailRedirectTo: getURL(`/auth/callback?next=${encodeURIComponent(next)}`),
         },
       });
       if (error) {
