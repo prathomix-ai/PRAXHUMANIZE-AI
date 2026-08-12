@@ -188,20 +188,43 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error("[/api/humanize] error:", err);
 
+    const errMsg = String(err?.message || err || "").toLowerCase();
+    const isKeyError =
+      errMsg.includes("invalid api key") ||
+      errMsg.includes("key") ||
+      errMsg.includes("rejected") ||
+      errMsg.includes("400") ||
+      errMsg.includes("401") ||
+      errMsg.includes("unauthorized");
+
+    if (isKeyError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "AI Providers rejected the API keys. Please verify your Gemini/Groq keys in Settings or env vars.",
+          message: "AI Providers rejected the API keys. Please verify your Gemini/Groq keys in Settings or env vars.",
+          isKeyError: true,
+        },
+        { status: 200 }
+      );
+    }
+
     const isServerDown =
       err?.isServerDown ||
       err?.name === "AllTiersExhaustedError" ||
-      err?.message?.includes("high load") ||
-      err?.message?.includes("exhausted");
+      errMsg.includes("high load") ||
+      errMsg.includes("exhausted") ||
+      errMsg.includes("fetch failed");
 
     if (isServerDown) {
       return NextResponse.json(
         {
           success: false,
-          message: "Server is currently experiencing high load. Please try again in a few minutes.",
+          error: "Server is currently experiencing high load or API key limits. Please try again shortly.",
+          message: "Server is currently experiencing high load or API key limits. Please try again shortly.",
           isServerDown: true,
         },
-        { status: 503 }
+        { status: 200 }
       );
     }
 
@@ -211,8 +234,9 @@ export async function POST(req: NextRequest) {
         error: err?.message || "Something went wrong while humanizing your text. Try again.",
         message: err?.message || "Something went wrong while humanizing your text. Try again.",
       },
-      { status: 500 }
+      { status: 200 }
     );
   }
 }
+
 

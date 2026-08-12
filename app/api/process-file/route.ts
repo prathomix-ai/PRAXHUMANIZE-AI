@@ -225,7 +225,8 @@ export async function POST(req: NextRequest) {
       err?.isServerDown ||
       err?.name === "AllTiersExhaustedError" ||
       err?.message?.includes("high load") ||
-      err?.message?.includes("exhausted");
+      err?.message?.includes("exhausted") ||
+      err?.message?.includes("fetch failed");
 
     return NextResponse.json(
       {
@@ -240,5 +241,6 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
 
 

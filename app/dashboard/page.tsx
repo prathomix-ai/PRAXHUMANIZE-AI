@@ -30,7 +30,10 @@ export default async function DashboardPage() {
         initialCredits={profile?.credits ?? 0}
         email={user.email}
       />
-      <Footer />
+      <div className="md:pl-64">
+        <Footer />
+      </div>
     </main>
   );
 }
+

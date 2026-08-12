@@ -153,122 +153,156 @@ ${text}
 /**
  * Tier 1: Local Laptop (Ollama via LOCAL_OLLAMA_URL) with 60-second timeout.
  */
+/**
+ * Tier 1: Local Laptop (Ollama via LOCAL_OLLAMA_URL) with 8-second connection timeout.
+ */
 async function tryTier1Ollama(promptText: string): Promise<string | null> {
-  const rawUrl = (
-    process.env.LOCAL_OLLAMA_URL ||
-    process.env.OLLAMA_BASE_URL ||
-    "http://127.0.0.1:11434"
-  ).trim();
-
-  const cleanUrl = rawUrl.replace(/\/$/, "");
-  const endpoint = cleanUrl.endsWith("/api/generate")
-    ? cleanUrl
-    : `${cleanUrl}/api/generate`;
-
-  const model = process.env.OLLAMA_MODEL || "llama3.1:latest";
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout for local LLM generation
-
   try {
-    console.log(`[Waterfall Tier 1] Connecting to local Ollama at ${endpoint} (60s timeout)...`);
-    const res = await fetch(endpoint, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        prompt: promptText,
-        stream: false,
-      }),
-      signal: controller.signal,
-    });
+    const rawUrl = (
+      process.env.LOCAL_OLLAMA_URL ||
+      process.env.OLLAMA_BASE_URL ||
+      "http://127.0.0.1:11434"
+    ).trim();
+
+    const cleanUrl = rawUrl.replace(/\/$/, "");
+    const endpoint = cleanUrl.endsWith("/api/generate")
+      ? cleanUrl
+      : `${cleanUrl}/api/generate`;
+
+    const model = process.env.OLLAMA_MODEL || "llama3.1:latest";
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s connection/generation limit
+
+    console.log(`[Waterfall Tier 1] Attempting connection to local Ollama at ${endpoint}...`);
+
+    let res: Response;
+    try {
+      res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model,
+          prompt: promptText,
+          stream: false,
+        }),
+        signal: controller.signal,
+      });
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      console.warn(
+        `[Waterfall Tier 1 Offline] Local Ollama is offline or unreachable (${fetchErr?.message || fetchErr}). Falling back to Tier 2...`
+      );
+      return null;
+    }
     clearTimeout(timeoutId);
 
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
-      console.warn(`[Waterfall Tier 1 Failed] Ollama status ${res.status}: ${errBody}`);
+      console.warn(
+        `[Waterfall Tier 1 Failed] Ollama status ${res.status}: ${errBody}. Falling back to Tier 2...`
+      );
       return null;
     }
 
-    const data = await res.json();
+    const data = await res.json().catch(() => null);
     if (data && typeof data.response === "string" && data.response.trim().length > 0) {
       console.log("[Waterfall Tier 1 Success] Response received from local Ollama.");
       return data.response.trim();
     }
+
+    console.warn(
+      "[Waterfall Tier 1 Failed] Ollama returned empty or invalid response. Falling back to Tier 2..."
+    );
     return null;
   } catch (err: any) {
-    clearTimeout(timeoutId);
-    if (err?.name === "AbortError") {
-      console.warn("[Waterfall Tier 1 Failed] Local Ollama timed out (60s limit reached).");
-    } else {
-      console.warn(`[Waterfall Tier 1 Failed] Local Ollama error: ${err?.message || err}`);
-    }
+    console.warn(
+      `[Waterfall Tier 1 Error] Unexpected Tier 1 error: ${err?.message || err}. Falling back to Tier 2...`
+    );
     return null;
   }
 }
 
+/**
+ * Aggressive helper to clean and trim environment variable API keys.
+ * Removes ALL single/double quotes, carriage returns (\r), newlines (\n),
+ * tabs (\t), zero-width Unicode spaces, and trims outer whitespace.
+ */
+function cleanKey(k?: string): string {
+  if (!k) return "";
+  return k
+    .replace(/['"\r\n\t]/g, "")
+    .replace(/[\u200B-\u200D\uFEFF]/g, "")
+    .trim();
+}
 
 /**
- * Collects Gemini API keys from separate environment variables (GEMINI_API_KEY_1..10+),
- * as well as GEMINI_API_KEYS (comma separated) and GEMINI_API_KEY.
+ * Robust helper function to extract all API keys for a specific provider
+ * by dynamically scanning process.env, handling comma-separated or numbered variables.
  */
-function getGeminiApiKeys(): string[] {
+export function getApiKeys(providerPrefix: string): string[] {
   const keys: string[] = [];
 
-  // 1. Check individual environment variables GEMINI_API_KEY_1 to GEMINI_API_KEY_20
-  for (let i = 1; i <= 20; i++) {
-    const val = process.env[`GEMINI_API_KEY_${i}`];
-    if (val && val.trim()) {
-      keys.push(val.trim());
+  const sanitize = (val: string) => cleanKey(val);
+
+  // Method A: Check for single/comma-separated variables (e.g., GROQ_API_KEYS, GROQ_API_KEY)
+  const candidateSingleVars = [
+    process.env[`${providerPrefix}_KEYS`],
+    process.env[`${providerPrefix}_KEY`],
+    process.env[providerPrefix],
+  ];
+
+  for (const singleVar of candidateSingleVars) {
+    if (singleVar) {
+      keys.push(...singleVar.split(",").map(sanitize).filter(Boolean));
     }
   }
 
-  // 2. Also check comma-separated or single default variable for backward compatibility
-  const rawKeys = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "";
-  if (rawKeys) {
-    const splitKeys = rawKeys
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean);
-    for (const k of splitKeys) {
-      if (!keys.includes(k)) {
-        keys.push(k);
+  // Method B: Dynamically scan process.env for numbered variables (e.g., GROQ_API_KEY_1, GROQ_API_KEY_2)
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value && typeof value === "string") {
+      const isMatch =
+        key.startsWith(`${providerPrefix}_KEY_`) ||
+        key.startsWith(`${providerPrefix}_`) ||
+        key.startsWith(`${providerPrefix}KEY_`);
+
+      if (isMatch) {
+        const cleaned = sanitize(value);
+        if (cleaned) {
+          // In case individual numbered var also contains comma-separated keys
+          keys.push(...cleaned.split(",").map(sanitize).filter(Boolean));
+        }
       }
     }
   }
 
+  // Return unique valid keys (minimum 5 characters to filter empty placeholders)
+  const uniqueKeys = [...new Set(keys)].filter((k) => k.length > 5);
+  console.log(
+    `[getApiKeys] Aggressively sanitized ${uniqueKeys.length} unique keys for provider prefix '${providerPrefix}'`
+  );
+  return uniqueKeys;
+}
+
+/**
+ * Collects Gemini API keys dynamically from environment variables.
+ */
+function getGeminiApiKeys(): string[] {
+  let keys = getApiKeys("GEMINI_API");
+  if (keys.length === 0) {
+    keys = getApiKeys("GEMINI");
+  }
   return keys;
 }
 
 /**
- * Collects Groq API keys from separate environment variables (GROQ_API_KEY_1..10+),
- * as well as GROQ_API_KEYS (comma separated) and GROQ_API_KEY.
+ * Collects Groq API keys dynamically from environment variables.
  */
 function getGroqApiKeys(): string[] {
-  const keys: string[] = [];
-
-  // 1. Check individual environment variables GROQ_API_KEY_1 to GROQ_API_KEY_20
-  for (let i = 1; i <= 20; i++) {
-    const val = process.env[`GROQ_API_KEY_${i}`];
-    if (val && val.trim()) {
-      keys.push(val.trim());
-    }
+  let keys = getApiKeys("GROQ_API");
+  if (keys.length === 0) {
+    keys = getApiKeys("GROQ");
   }
-
-  // 2. Also check comma-separated or single default variable for backward compatibility
-  const rawKeys = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "";
-  if (rawKeys) {
-    const splitKeys = rawKeys
-      .split(",")
-      .map((k) => k.trim())
-      .filter(Boolean);
-    for (const k of splitKeys) {
-      if (!keys.includes(k)) {
-        keys.push(k);
-      }
-    }
-  }
-
   return keys;
 }
 
@@ -276,142 +310,192 @@ function getGroqApiKeys(): string[] {
  * Tier 2: Gemini API Key Rotation (GEMINI_API_KEY_1..10 or GEMINI_API_KEYS)
  */
 async function tryTier2GeminiKeyRotation(promptText: string): Promise<string | null> {
-  const keys = getGeminiApiKeys();
+  try {
+    const keys = getGeminiApiKeys();
 
-  if (keys.length === 0) {
-    console.warn("[Waterfall Tier 2 Skipped] No Gemini API keys configured.");
-    return null;
-  }
+    if (keys.length === 0) {
+      console.warn("[Waterfall Tier 2 Skipped] No Gemini API keys configured.");
+      return null;
+    }
 
-  const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
+    const model = process.env.GEMINI_MODEL || "gemini-1.5-flash";
 
-  for (let i = 0; i < keys.length; i++) {
-    const apiKey = keys[i];
-    console.log(`[Waterfall Tier 2] Trying Gemini API Key ${i + 1}/${keys.length}...`);
+    for (let i = 0; i < keys.length; i++) {
+      const apiKey = cleanKey(keys[i]);
+      const keyPreview = apiKey.length > 8 ? `${apiKey.slice(0, 5)}...${apiKey.slice(-4)}` : "key";
+      console.log(`[Waterfall Tier 2] Trying Gemini API Key ${i + 1}/${keys.length} (${keyPreview})...`);
 
-    try {
-      const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: promptText }] }],
-          safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-          ],
-          generationConfig: { temperature: 0.7 },
-        }),
-      });
+      try {
+        const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      if (res.ok) {
-        const data = await res.json();
+        let res: Response;
+        try {
+          res = await fetch(endpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: promptText }] }],
+              safetySettings: [
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+              ],
+              generationConfig: { temperature: 0.7 },
+            }),
+            signal: controller.signal,
+          });
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          console.error(
+            `[Waterfall Tier 2] Key ${i + 1}/${keys.length} fetch error: ${fetchErr?.message || fetchErr}. Rotating key...`
+          );
+          continue;
+        }
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          console.error(`🔴 GEMINI REJECTED (${res.status}):`, errText);
+          throw new Error(`Gemini fetch failed (${res.status})`);
+        }
+
+        const data = await res.json().catch(() => null);
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (text && typeof text === "string" && text.trim().length > 0) {
           console.log(`[Waterfall Tier 2 Success] Gemini API key ${i + 1} succeeded.`);
           return text.trim();
         }
+      } catch (err: any) {
+        console.error(
+          `[Waterfall Tier 2] Key ${i + 1}/${keys.length} error: ${err?.message || err}. Rotating key...`
+        );
       }
-
-      console.warn(
-        `[Waterfall Tier 2] Key ${i + 1}/${keys.length} failed with status ${res.status}. Rotating key...`
-      );
-    } catch (err: any) {
-      console.warn(
-        `[Waterfall Tier 2] Key ${i + 1}/${keys.length} error: ${err?.message || err}. Rotating key...`
-      );
     }
-  }
 
-  console.warn("[Waterfall Tier 2 Failed] All Gemini API keys were exhausted or failed.");
-  return null;
+    console.warn("[Waterfall Tier 2 Failed] All Gemini API keys were exhausted or failed.");
+    return null;
+  } catch (err: any) {
+    console.error(`[Waterfall Tier 2 Error] Unexpected Tier 2 error: ${err?.message || err}`);
+    return null;
+  }
 }
 
 /**
  * Tier 3: Groq API Key Rotation (GROQ_API_KEY_1..10 or GROQ_API_KEYS)
  */
 async function tryTier3GroqKeyRotation(promptText: string): Promise<string | null> {
-  const keys = getGroqApiKeys();
+  try {
+    const keys = getGroqApiKeys();
 
-  if (keys.length === 0) {
-    console.warn("[Waterfall Tier 3 Skipped] No Groq API keys configured.");
-    return null;
-  }
+    if (keys.length === 0) {
+      console.warn("[Waterfall Tier 3 Skipped] No Groq API keys configured.");
+      return null;
+    }
 
-  const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
+    const model = process.env.GROQ_MODEL || "llama-3.3-70b-versatile";
 
-  for (let i = 0; i < keys.length; i++) {
-    const apiKey = keys[i];
-    console.log(`[Waterfall Tier 3] Trying Groq API Key ${i + 1}/${keys.length}...`);
+    for (let i = 0; i < keys.length; i++) {
+      const apiKey = cleanKey(keys[i]);
+      const keyPreview = apiKey.length > 8 ? `${apiKey.slice(0, 5)}...${apiKey.slice(-4)}` : "key";
+      console.log(`[Waterfall Tier 3] Trying Groq API Key ${i + 1}/${keys.length} (${keyPreview})...`);
 
-    try {
-      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "user", content: promptText }],
-          temperature: 0.7,
-        }),
-      });
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-      if (res.ok) {
-        const data = await res.json();
+        let res: Response;
+        try {
+          res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${apiKey}`,
+            },
+            body: JSON.stringify({
+              model,
+              messages: [{ role: "user", content: promptText }],
+              temperature: 0.7,
+            }),
+            signal: controller.signal,
+          });
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          console.error(
+            `[Waterfall Tier 3] Key ${i + 1}/${keys.length} fetch error: ${fetchErr?.message || fetchErr}. Rotating key...`
+          );
+          continue;
+        }
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => "");
+          console.error(`🔴 GROQ REJECTED (${res.status}):`, errText);
+          throw new Error(`Groq fetch failed (${res.status})`);
+        }
+
+        const data = await res.json().catch(() => null);
         const text = data?.choices?.[0]?.message?.content;
         if (text && typeof text === "string" && text.trim().length > 0) {
           console.log(`[Waterfall Tier 3 Success] Groq API key ${i + 1} succeeded.`);
           return text.trim();
         }
+      } catch (err: any) {
+        console.error(
+          `[Waterfall Tier 3] Key ${i + 1}/${keys.length} error: ${err?.message || err}. Rotating key...`
+        );
       }
-
-      console.warn(
-        `[Waterfall Tier 3] Key ${i + 1}/${keys.length} failed with status ${res.status}. Rotating key...`
-      );
-    } catch (err: any) {
-      console.warn(
-        `[Waterfall Tier 3] Key ${i + 1}/${keys.length} error: ${err?.message || err}. Rotating key...`
-      );
     }
-  }
 
-  console.warn("[Waterfall Tier 3 Failed] All Groq API keys were exhausted or failed.");
-  return null;
+    console.warn("[Waterfall Tier 3 Failed] All Groq API keys were exhausted or failed.");
+    return null;
+  } catch (err: any) {
+    console.error(`[Waterfall Tier 3 Error] Unexpected Tier 3 error: ${err?.message || err}`);
+    return null;
+  }
 }
 
 /**
  * Multi-Tier Waterfall Fallback System Orchestrator.
- * Tries Tier 1 -> Tier 2 -> Tier 3 -> Tier 4 (AllTiersExhaustedError).
+ * Tries Tier 1 -> Tier 2 -> Tier 3 -> Tier 4 (Safe Fallback Return).
  */
-export async function generateWithWaterfall(promptText: string): Promise<string> {
+export async function generateWithWaterfall(promptText: string): Promise<string | null> {
   // Tier 1: Local Laptop (Ollama)
-  const tier1Output = await tryTier1Ollama(promptText);
-  if (tier1Output) return tier1Output;
+  try {
+    const tier1Output = await tryTier1Ollama(promptText);
+    if (tier1Output) return tier1Output;
+  } catch (err: any) {
+    console.warn(`[Waterfall] Tier 1 unhandled error: ${err?.message || err}`);
+  }
 
   // Tier 2: Gemini API Key Array Rotation
   console.warn("[Waterfall] Tier 1 offline/failed. Falling back to Tier 2 (Gemini API Array)...");
-  const tier2Output = await tryTier2GeminiKeyRotation(promptText);
-  if (tier2Output) return tier2Output;
+  try {
+    const tier2Output = await tryTier2GeminiKeyRotation(promptText);
+    if (tier2Output) return tier2Output;
+  } catch (err: any) {
+    console.warn(`[Waterfall] Tier 2 unhandled error: ${err?.message || err}`);
+  }
 
   // Tier 3: Groq API Key Array Rotation
   console.warn("[Waterfall] Tier 2 exhausted/failed. Falling back to Tier 3 (Groq API Array)...");
-  const tier3Output = await tryTier3GroqKeyRotation(promptText);
-  if (tier3Output) return tier3Output;
+  try {
+    const tier3Output = await tryTier3GroqKeyRotation(promptText);
+    if (tier3Output) return tier3Output;
+  } catch (err: any) {
+    console.warn(`[Waterfall] Tier 3 unhandled error: ${err?.message || err}`);
+  }
 
-  // Tier 4: Graceful Degradation
-  console.error("[Waterfall Tier 4] All tiers (Ollama, Gemini, Groq) failed or were exhausted!");
-  throw new AllTiersExhaustedError(
-    "Server is currently experiencing high load. Please try again in a few minutes."
+  // Tier 4: Graceful Degradation (No throw, no stack trace!)
+  console.warn(
+    "🔴 [Waterfall] All AI providers failed or were exhausted. Returning safe fallback response to client."
   );
+  return null;
 }
 
-/**
- * Humanizes text embedded within HTML tags, preserving exact HTML structure.
- */
 /**
  * Humanizes text embedded within HTML tags, preserving exact HTML structure.
  */
@@ -431,14 +515,13 @@ export async function humanizeHtmlChunk(
 You are a text humanizer. You will receive text embedded within HTML tags. Your job is to rewrite the text content to make it sound human-written. CRITICAL RULE: You MUST perfectly preserve every single HTML tag, attribute, and structural element exactly as provided. Do NOT output Markdown. Only change the words inside the tags.
 
 Context: ${toneInstruction}
-CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested language: [${language}]. Do NOT translate the text to English unless '${language}' is English. If the target language uses a specific script (e.g., Devanagari for Hindi/Sanskrit), you must use that script.
-CRITICAL RULE 2: Output ONLY the final humanized text. ABSOLUTELY NO conversational fillers, introductions, or pleasantries (e.g., do not say 'Here is the rewritten text:'). Just output the text itself.
-CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate or refusal message should be returned.
 
 HTML to humanize:
 ${htmlChunk}`;
 
   const rawOutput = await generateWithWaterfall(prompt);
+  if (!rawOutput) return htmlChunk;
+
   const cleanHtml = cleanConversationalFillers(rawOutput);
 
   if (isRefusalOrSafetyBoilerplate(cleanHtml)) {
@@ -465,6 +548,8 @@ CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [$
 Text:
 ${text}`;
   const raw = await generateWithWaterfall(prompt);
+  if (!raw) return fallbackHumanize(text, language);
+
   const cleaned = cleanConversationalFillers(raw);
   if (isRefusalOrSafetyBoilerplate(cleaned)) {
     return fallbackHumanize(text, language);
@@ -478,6 +563,11 @@ ${text}`;
 export async function humanizeText(params: HumanizeParams): Promise<string> {
   const { text, language = "English" } = params;
   const raw = await generateWithWaterfall(buildPrompt(params));
+  if (!raw) {
+    console.warn("[humanizeText] Waterfall returned null. Executing safe fallback rewrite.");
+    return fallbackHumanize(text, language);
+  }
+
   const cleaned = cleanConversationalFillers(raw);
 
   const isShortInput = text.trim().length <= 5;
@@ -510,11 +600,11 @@ CRITICAL RULE 1: You MUST write the final output EXACTLY in the requested langua
 CRITICAL RULE 2: Return ONLY the rewritten text without any preamble or conversational fillers.
 CRITICAL RULE 3: Even if an error or edge case occurs, the requested language [${language}] must be strictly honored and no English-only safety boilerplate or refusal message should be returned.\n\n${markedUpText}`;
   const raw = await generateWithWaterfall(prompt);
+  if (!raw) return fallbackHumanize(markedUpText, language);
+
   const cleaned = cleanConversationalFillers(raw);
   if (isRefusalOrSafetyBoilerplate(cleaned)) {
     return fallbackHumanize(markedUpText, language);
   }
   return cleaned;
 }
-
-

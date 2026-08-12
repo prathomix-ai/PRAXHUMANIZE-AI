@@ -56,8 +56,8 @@ export default function Workspace({
 
       const data = await res.json();
 
-      if (!res.ok) {
-        throw new Error(data.message || data.error || "Something went wrong.");
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || data.error || "Failed to process text.");
       }
 
 
