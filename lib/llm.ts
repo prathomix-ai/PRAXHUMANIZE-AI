@@ -209,17 +209,77 @@ async function tryTier1Ollama(promptText: string): Promise<string | null> {
 
 
 /**
- * Tier 2: Gemini API Key Rotation (GEMINI_API_KEYS="key1,key2,key3...")
+ * Collects Gemini API keys from separate environment variables (GEMINI_API_KEY_1..10+),
+ * as well as GEMINI_API_KEYS (comma separated) and GEMINI_API_KEY.
+ */
+function getGeminiApiKeys(): string[] {
+  const keys: string[] = [];
+
+  // 1. Check individual environment variables GEMINI_API_KEY_1 to GEMINI_API_KEY_20
+  for (let i = 1; i <= 20; i++) {
+    const val = process.env[`GEMINI_API_KEY_${i}`];
+    if (val && val.trim()) {
+      keys.push(val.trim());
+    }
+  }
+
+  // 2. Also check comma-separated or single default variable for backward compatibility
+  const rawKeys = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "";
+  if (rawKeys) {
+    const splitKeys = rawKeys
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    for (const k of splitKeys) {
+      if (!keys.includes(k)) {
+        keys.push(k);
+      }
+    }
+  }
+
+  return keys;
+}
+
+/**
+ * Collects Groq API keys from separate environment variables (GROQ_API_KEY_1..10+),
+ * as well as GROQ_API_KEYS (comma separated) and GROQ_API_KEY.
+ */
+function getGroqApiKeys(): string[] {
+  const keys: string[] = [];
+
+  // 1. Check individual environment variables GROQ_API_KEY_1 to GROQ_API_KEY_20
+  for (let i = 1; i <= 20; i++) {
+    const val = process.env[`GROQ_API_KEY_${i}`];
+    if (val && val.trim()) {
+      keys.push(val.trim());
+    }
+  }
+
+  // 2. Also check comma-separated or single default variable for backward compatibility
+  const rawKeys = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "";
+  if (rawKeys) {
+    const splitKeys = rawKeys
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+    for (const k of splitKeys) {
+      if (!keys.includes(k)) {
+        keys.push(k);
+      }
+    }
+  }
+
+  return keys;
+}
+
+/**
+ * Tier 2: Gemini API Key Rotation (GEMINI_API_KEY_1..10 or GEMINI_API_KEYS)
  */
 async function tryTier2GeminiKeyRotation(promptText: string): Promise<string | null> {
-  const rawKeys = process.env.GEMINI_API_KEYS || process.env.GEMINI_API_KEY || "";
-  const keys = rawKeys
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
+  const keys = getGeminiApiKeys();
 
   if (keys.length === 0) {
-    console.warn("[Waterfall Tier 2 Skipped] No GEMINI_API_KEYS configured.");
+    console.warn("[Waterfall Tier 2 Skipped] No Gemini API keys configured.");
     return null;
   }
 
@@ -270,17 +330,13 @@ async function tryTier2GeminiKeyRotation(promptText: string): Promise<string | n
 }
 
 /**
- * Tier 3: Groq API Key Rotation (GROQ_API_KEYS="key1,key2,key3...")
+ * Tier 3: Groq API Key Rotation (GROQ_API_KEY_1..10 or GROQ_API_KEYS)
  */
 async function tryTier3GroqKeyRotation(promptText: string): Promise<string | null> {
-  const rawKeys = process.env.GROQ_API_KEYS || process.env.GROQ_API_KEY || "";
-  const keys = rawKeys
-    .split(",")
-    .map((k) => k.trim())
-    .filter(Boolean);
+  const keys = getGroqApiKeys();
 
   if (keys.length === 0) {
-    console.warn("[Waterfall Tier 3 Skipped] No GROQ_API_KEYS configured.");
+    console.warn("[Waterfall Tier 3 Skipped] No Groq API keys configured.");
     return null;
   }
 
