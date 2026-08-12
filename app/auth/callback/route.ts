@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getURL } from "@/lib/utils";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
+  const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
   const next = searchParams.get("next") ?? "/dashboard";
 
@@ -11,11 +10,15 @@ export async function GET(request: Request) {
     const supabase = createSupabaseServerClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      const redirectUrl = next.startsWith("/") ? next : `/${next}`;
-      return NextResponse.redirect(getURL(redirectUrl));
+      const forwardedHost = request.headers.get("x-forwarded-host");
+      const isLocalEnv = process.env.NODE_ENV === "development";
+      const baseOrigin = !isLocalEnv && forwardedHost ? `https://${forwardedHost}` : origin;
+      const redirectPath = next.startsWith("/") ? next : `/${next}`;
+      return NextResponse.redirect(`${baseOrigin}${redirectPath}`);
     }
   }
 
-  return NextResponse.redirect(getURL("/login?error=Could%20not%20authenticate"));
+  return NextResponse.redirect(`${origin}/login?error=Could%20not%20authenticate`);
 }
+
 

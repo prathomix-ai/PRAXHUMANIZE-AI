@@ -13,8 +13,27 @@ create table if not exists public.users (
   id uuid primary key references auth.users (id) on delete cascade,
   email text not null,
   credits integer not null default 20,
+  full_name text,
+  gender text,
   created_at timestamptz not null default now()
 );
+
+alter table public.users add column if not exists full_name text;
+alter table public.users add column if not exists gender text;
+
+-- RLS Policies for public.users
+alter table public.users enable row level security;
+
+drop policy if exists "Users can view their own profile" on public.users;
+drop policy if exists "Users can update their own profile" on public.users;
+
+create policy "Users can view their own profile"
+  on public.users for select
+  using (auth.uid() = id);
+
+create policy "Users can update their own profile"
+  on public.users for update
+  using (auth.uid() = id);
 
 -- Trigger to automatically create public.users row on auth signup
 create or replace function public.handle_new_user()

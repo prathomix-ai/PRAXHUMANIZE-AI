@@ -89,7 +89,11 @@ export default function FileDropzone({
     if (picked) validateAndSetFile(picked);
   }
 
-  async function handleHumanize() {
+  async function handleHumanize(e?: React.FormEvent | React.MouseEvent) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!file) return;
     setStatus("uploading");
     setError("");

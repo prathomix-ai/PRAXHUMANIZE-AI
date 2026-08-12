@@ -15,8 +15,8 @@ export function cn(...inputs: ClassValue[]) {
  */
 export const getURL = (path: string = ""): string => {
   let url =
-    process?.env?.NEXT_PUBLIC_SITE_URL ??
     (typeof window !== "undefined" && window.location.origin ? window.location.origin : null) ??
+    process?.env?.NEXT_PUBLIC_SITE_URL ??
     process?.env?.NEXT_PUBLIC_VERCEL_URL ??
     "http://localhost:3000";
 

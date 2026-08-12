@@ -8,8 +8,10 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 
 export default function Header({
   email,
+  fullName,
 }: {
   email?: string;
+  fullName?: string | null;
 }) {
   const router = useRouter();
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -20,6 +22,9 @@ export default function Header({
     router.push("/login");
     router.refresh();
   }
+
+  const displayName =
+    fullName && fullName.trim() !== "" ? fullName : email || "Signed In User";
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -100,8 +105,8 @@ export default function Header({
                       <UserCircle size={22} />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-xs font-semibold text-slate-100" title={email || "User Account"}>
-                        {email || "Signed In User"}
+                      <p className="truncate text-xs font-semibold text-slate-100" title={displayName}>
+                        {displayName}
                       </p>
                       <span className="inline-flex items-center gap-1 text-[10px] font-medium text-aurora-mint mt-0.5">
                         <CheckCircle2 size={11} /> Active Pro Account

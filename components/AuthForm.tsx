@@ -19,10 +19,12 @@ export default function AuthForm({ next }: { next: string }) {
   async function handleGoogle() {
     setError("");
     setLoading("google");
+    const origin = typeof window !== "undefined" && window.location.origin ? window.location.origin : getURL();
+    const redirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
     const { error } = await supabaseBrowser.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: getURL(`/auth/callback?next=${encodeURIComponent(next)}`),
+        redirectTo,
       },
     });
     if (error) {
@@ -50,11 +52,13 @@ export default function AuthForm({ next }: { next: string }) {
       }
       window.location.href = next;
     } else {
+      const origin = typeof window !== "undefined" && window.location.origin ? window.location.origin : getURL();
+      const emailRedirectTo = `${origin}/auth/callback?next=${encodeURIComponent(next)}`;
       const { error } = await supabaseBrowser.auth.signUp({
         email,
         password,
         options: {
-          emailRedirectTo: getURL(`/auth/callback?next=${encodeURIComponent(next)}`),
+          emailRedirectTo,
         },
       });
       if (error) {

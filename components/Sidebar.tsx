@@ -19,6 +19,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 
 interface SidebarProps {
   email?: string;
+  fullName?: string | null;
   activeNav: string;
   setActiveNav: (nav: string) => void;
   onOpenNewModal: () => void;
@@ -26,6 +27,7 @@ interface SidebarProps {
 
 export default function Sidebar({
   email,
+  fullName,
   activeNav,
   setActiveNav,
   onOpenNewModal,
@@ -47,7 +49,12 @@ export default function Sidebar({
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const username = email ? email.split("@")[0] : "Creator";
+  const displayName =
+    fullName && fullName.trim() !== ""
+      ? fullName
+      : email
+      ? email.split("@")[0]
+      : "Creator";
 
   return (
     <aside className="fixed top-0 bottom-0 left-0 z-40 hidden w-64 flex-col justify-between border-r border-white/10 bg-[#070714]/85 backdrop-blur-2xl p-5 md:flex select-none">
@@ -120,7 +127,7 @@ export default function Sidebar({
                 className="truncate text-xs font-semibold text-slate-200 capitalize"
                 title={email || "User Account"}
               >
-                {username}
+                {displayName}
               </p>
               <p className="text-[10px] text-aurora-mint flex items-center gap-1 font-medium">
                 <ShieldCheck size={11} /> Pro Member

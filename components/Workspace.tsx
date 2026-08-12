@@ -40,7 +40,11 @@ export default function Workspace({
     [outputText]
   );
 
-  async function handleHumanize() {
+  async function handleHumanize(e?: React.FormEvent | React.MouseEvent) {
+    if (e) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
     if (!canSubmit) return;
     setStatus("loading");
     setErrorMsg("");
