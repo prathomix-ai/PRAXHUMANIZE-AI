@@ -31,7 +31,6 @@ export default function AuthForm({ next }: { next: string }) {
       setError(error.message);
       setLoading("idle");
     }
-    // On success, the browser is redirected to Google — nothing else to do here.
   }
 
   async function handleEmailAuth(e: React.FormEvent) {
@@ -72,28 +71,31 @@ export default function AuthForm({ next }: { next: string }) {
   }
 
   return (
-    <div className="glass w-full max-w-sm rounded-2xl p-7">
-      <div className="mb-6 flex rounded-xl glass-inset p-1">
+    <div className="glass w-full max-w-sm rounded-2xl p-7 border border-slate-200/80 dark:border-white/10 bg-white/90 dark:bg-slate-950/80 shadow-lg dark:shadow-2xl transition-colors duration-200">
+      <div className="mb-6 flex rounded-xl glass-inset p-1 border border-slate-200/80 dark:border-white/10">
         {(["sign_in", "sign_up"] as Mode[]).map((m) => (
           <button
             key={m}
+            type="button"
             onClick={() => {
               setMode(m);
               setError("");
               setMessage("");
             }}
-            className={`relative flex-1 rounded-lg py-2 text-sm font-medium transition-colors ${
-              mode === m ? "text-white" : "text-slate-500 hover:text-slate-300"
+            className={`relative flex-1 rounded-lg py-2 text-sm font-medium transition-colors cursor-pointer ${
+              mode === m
+                ? "text-white shadow-sm"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             {mode === m && (
               <motion.span
                 layoutId="auth-tab"
-                className="absolute inset-0 rounded-lg bg-gradient-to-r from-aurora-violet to-aurora-blue"
+                className="absolute inset-0 rounded-lg bg-slate-900 dark:bg-gradient-to-r dark:from-aurora-violet dark:to-aurora-blue"
                 transition={{ type: "spring", stiffness: 400, damping: 32 }}
               />
             )}
-            <span className="relative">
+            <span className="relative z-10">
               {m === "sign_in" ? "Sign In" : "Sign Up"}
             </span>
           </button>
@@ -101,38 +103,39 @@ export default function AuthForm({ next }: { next: string }) {
       </div>
 
       <button
+        type="button"
         onClick={handleGoogle}
         disabled={loading !== "idle"}
-        className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-xl glass-inset py-2.5 text-sm font-medium text-slate-200 transition-colors hover:bg-white/[0.06] disabled:opacity-50"
+        className="mb-4 flex w-full items-center justify-center gap-2.5 rounded-xl glass-inset py-2.5 text-sm font-medium text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors disabled:opacity-50 cursor-pointer"
       >
         {loading === "google" ? (
-          <Loader2 size={16} className="animate-spin" />
+          <Loader2 size={16} className="animate-spin text-slate-600 dark:text-slate-300" />
         ) : (
           <GoogleIcon />
         )}
-        Continue with Google
+        <span>Continue with Google</span>
       </button>
 
       <div className="mb-4 flex items-center gap-3">
-        <span className="h-px flex-1 bg-white/10" />
-        <span className="text-xs text-slate-600">or</span>
-        <span className="h-px flex-1 bg-white/10" />
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
+        <span className="text-xs text-slate-400 dark:text-slate-600 font-medium">or</span>
+        <span className="h-px flex-1 bg-slate-200 dark:bg-white/10" />
       </div>
 
       <form onSubmit={handleEmailAuth} className="space-y-3">
         <div className="relative">
-          <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Mail size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="email"
             required
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="you@company.com"
-            className="w-full rounded-xl glass-inset py-2.5 pl-10 pr-3.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-aurora-violet/50"
+            className="w-full rounded-xl glass-inset py-2.5 pl-10 pr-3.5 text-sm text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:focus:ring-aurora-violet/50 border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03]"
           />
         </div>
         <div className="relative">
-          <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Lock size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="password"
             required
@@ -140,7 +143,7 @@ export default function AuthForm({ next }: { next: string }) {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="w-full rounded-xl glass-inset py-2.5 pl-10 pr-3.5 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-aurora-violet/50"
+            className="w-full rounded-xl glass-inset py-2.5 pl-10 pr-3.5 text-sm text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 dark:focus:ring-aurora-violet/50 border border-slate-200 dark:border-white/10 bg-slate-50/70 dark:bg-white/[0.03]"
           />
         </div>
 
@@ -150,7 +153,7 @@ export default function AuthForm({ next }: { next: string }) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="flex items-start gap-1.5 text-xs text-rose-400"
+              className="flex items-start gap-1.5 text-xs text-rose-600 dark:text-rose-400 font-medium"
             >
               <AlertCircle size={13} className="mt-0.5 shrink-0" /> {error}
             </motion.div>
@@ -160,7 +163,7 @@ export default function AuthForm({ next }: { next: string }) {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
-              className="flex items-start gap-1.5 text-xs text-aurora-mint"
+              className="flex items-start gap-1.5 text-xs text-emerald-600 dark:text-aurora-mint font-medium"
             >
               <CheckCircle2 size={13} className="mt-0.5 shrink-0" /> {message}
             </motion.div>
@@ -171,12 +174,12 @@ export default function AuthForm({ next }: { next: string }) {
           type="submit"
           disabled={loading !== "idle"}
           whileTap={{ scale: 0.98 }}
-          className="relative mt-1 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+          className="relative mt-1 flex w-full items-center justify-center gap-2 overflow-hidden rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60 cursor-pointer shadow-md"
         >
-          <span className="absolute inset-0 bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
-          <span className="relative flex items-center gap-1.5">
+          <span className="absolute inset-0 bg-slate-900 text-white dark:bg-gradient-to-r dark:from-aurora-violet dark:via-aurora-blue dark:to-aurora-rose dark:bg-[length:200%_100%] dark:animate-gradient-flow" />
+          <span className="relative flex items-center gap-1.5 text-white">
             {loading === "email" ? (
-              <Loader2 size={15} className="animate-spin" />
+              <Loader2 size={15} className="animate-spin text-white" />
             ) : (
               <>
                 {mode === "sign_in" ? "Sign In" : "Create Account"}

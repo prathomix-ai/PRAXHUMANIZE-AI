@@ -57,21 +57,16 @@ export default function Workspace({
         body: JSON.stringify({ text: inputText, category, tone, language, userId }),
       });
 
-
       const data = await res.json();
 
       if (!res.ok || data.success === false) {
         throw new Error(data.message || data.error || "Failed to process text.");
       }
 
-
       setOutputText(data.humanizedText);
       setStatus("done");
       onProcessed?.();
 
-      // Optional client-side history save (also happens server-side in the
-      // API route). Kept here as an example of using the Supabase client
-      // directly from a component if you want optimistic UI updates.
       if (userId) {
         await supabaseBrowser.from("generations").insert({
           user_id: userId,
@@ -104,15 +99,15 @@ export default function Workspace({
   return (
     <div className="w-full">
       {/* Controls */}
-      <div className="glass mb-4 flex flex-col gap-4 rounded-2xl p-4 md:p-5 lg:flex-row lg:items-start lg:justify-between">
+      <div className="glass mb-4 flex flex-col gap-4 rounded-2xl p-4 md:p-5 lg:flex-row lg:items-start lg:justify-between border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-950/70 shadow-sm dark:shadow-xl transition-colors duration-200">
         <div className="flex-1">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-400">
             Category
           </p>
           <CategoryChips value={category} onChange={setCategory} />
         </div>
         <div className="flex-1">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-slate-500">
+          <p className="mb-2 text-xs font-bold uppercase tracking-wider text-slate-700 dark:text-slate-400">
             Tone
           </p>
           <ToneToggle value={tone} onChange={setTone} />
@@ -124,15 +119,15 @@ export default function Workspace({
         {/* INPUT */}
         <motion.div
           layout
-          className="glass relative flex min-h-[420px] flex-col rounded-2xl p-5"
+          className="glass relative flex min-h-[420px] flex-col rounded-2xl p-5 border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-950/70 shadow-sm dark:shadow-xl transition-colors duration-200"
         >
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-sm font-semibold text-slate-200">
+            <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-200">
               AI Input
             </h2>
             <button
               onClick={handleReset}
-              className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-slate-300"
+              className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-slate-900 dark:hover:text-slate-300 cursor-pointer"
             >
               <RotateCcw size={12} /> Clear
             </button>
@@ -142,13 +137,13 @@ export default function Workspace({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             placeholder="Paste your AI-generated text here — a report, an essay, a cold email, anything that sounds a little too perfect..."
-            className="thin-scrollbar flex-1 resize-none bg-transparent text-[15px] leading-relaxed text-slate-200 placeholder:text-slate-600 focus:outline-none"
+            className="thin-scrollbar flex-1 resize-none bg-transparent text-[15px] leading-relaxed text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none"
           />
 
-          <div className="mt-3 flex items-center justify-between border-t border-white/5 pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-slate-200/80 dark:border-white/5 pt-3">
             <span
               className={`font-mono text-xs ${
-                overLimit ? "text-rose-400" : "text-slate-600"
+                overLimit ? "text-rose-500 dark:text-rose-400" : "text-slate-500 dark:text-slate-500"
               }`}
             >
               {charCount.toLocaleString()} / {MAX_CHARS.toLocaleString()}
@@ -161,11 +156,11 @@ export default function Workspace({
                 onClick={handleHumanize}
                 disabled={!canSubmit}
                 whileTap={canSubmit ? { scale: 0.97 } : undefined}
-                className={`relative flex items-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-semibold transition-opacity ${
+                className={`relative flex items-center gap-2 overflow-hidden rounded-xl px-5 py-2.5 text-sm font-semibold transition-opacity cursor-pointer ${
                   canSubmit ? "opacity-100" : "cursor-not-allowed opacity-40"
                 }`}
               >
-                <span className="absolute inset-0 bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
+                <span className="absolute inset-0 bg-slate-900 text-white dark:bg-gradient-to-r dark:from-aurora-violet dark:via-aurora-blue dark:to-aurora-rose dark:bg-[length:200%_100%] dark:animate-gradient-flow" />
                 {status === "loading" && (
                   <motion.span
                     className="absolute inset-0 bg-white/20"
@@ -197,26 +192,25 @@ export default function Workspace({
               </motion.button>
             </div>
           </div>
-
         </motion.div>
 
         {/* OUTPUT */}
         <motion.div
           layout
-          className="glass relative flex min-h-[420px] flex-col rounded-2xl p-5"
+          className="glass relative flex min-h-[420px] flex-col rounded-2xl p-5 border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-950/70 shadow-sm dark:shadow-xl transition-colors duration-200"
         >
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-sm font-semibold text-slate-200">
+            <h2 className="font-display text-sm font-semibold text-slate-900 dark:text-slate-200">
               Humanized Output
             </h2>
             {status === "done" && outputText && (
               <button
                 onClick={handleCopy}
-                className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-slate-300"
+                className="flex items-center gap-1 text-xs text-slate-500 transition-colors hover:text-slate-900 dark:hover:text-slate-300 cursor-pointer"
               >
                 {copied ? (
                   <>
-                    <Check size={12} className="text-aurora-mint" /> Copied
+                    <Check size={12} className="text-emerald-600 dark:text-aurora-mint" /> Copied
                   </>
                 ) : (
                   <>
@@ -247,7 +241,7 @@ export default function Workspace({
                   key="error"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex h-full items-center justify-center text-center text-sm text-rose-400"
+                  className="flex h-full items-center justify-center text-center text-sm text-rose-600 dark:text-rose-400"
                 >
                   {errorMsg}
                 </motion.div>
@@ -259,7 +253,7 @@ export default function Workspace({
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.4 }}
-                  className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-200"
+                  className="whitespace-pre-wrap text-[15px] leading-relaxed text-slate-900 dark:text-slate-200"
                 >
                   {outputText}
                 </motion.p>
@@ -270,7 +264,7 @@ export default function Workspace({
                   key="idle"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="flex h-full items-center justify-center text-center text-sm text-slate-600"
+                  className="flex h-full items-center justify-center text-center text-sm text-slate-400 dark:text-slate-600"
                 >
                   Your humanized text will appear here.
                 </motion.div>
@@ -279,8 +273,8 @@ export default function Workspace({
           </div>
 
           {status === "done" && (
-            <div className="mt-3 border-t border-white/5 pt-3">
-              <span className="font-mono text-xs text-slate-600">
+            <div className="mt-3 border-t border-slate-200/80 dark:border-white/5 pt-3">
+              <span className="font-mono text-xs text-slate-500 dark:text-slate-600">
                 {outputWordCount.toLocaleString()} words
               </span>
             </div>

@@ -25,10 +25,10 @@ export default function LanguageSelect({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none rounded-xl bg-white/5 pl-8 pr-7 py-2.5 text-xs font-medium text-slate-200 border border-white/10 focus:border-aurora-violet focus:outline-none transition-colors cursor-pointer hover:bg-white/10"
+        className="appearance-none rounded-xl bg-slate-100 dark:bg-white/5 pl-8 pr-7 py-2.5 text-xs font-medium text-slate-900 dark:text-slate-200 border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-aurora-violet focus:outline-none transition-colors cursor-pointer hover:bg-slate-200/70 dark:hover:bg-white/10"
       >
         {SUPPORTED_LANGUAGES.map((lang) => (
-          <option key={lang.id} value={lang.id} className="bg-slate-900 text-slate-200">
+          <option key={lang.id} value={lang.id} className="bg-white text-slate-900 dark:bg-slate-900 dark:text-slate-200">
             {lang.label}
           </option>
         ))}

@@ -25,6 +25,7 @@ import Workspace from "./Workspace";
 import FileDropzone from "./FileDropzone";
 import GammaHistoryGrid from "./GammaHistoryGrid";
 import ProfileSettings from "./ProfileSettings";
+import ThemeToggle from "./ThemeToggle";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
 type InputMode = "text" | "document";
@@ -128,12 +129,12 @@ export default function DashboardShell({
         : "Creator";
 
   return (
-    <div className="relative min-h-screen bg-[#050510] text-slate-100 font-body antialiased overflow-x-hidden">
-      {/* Background Texture & Soft Top Radial Gradient Glow */}
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#050510] to-[#050510]" />
-      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(#1e1b4b_1px,transparent_1px)] [background-size:28px_28px] opacity-20" />
-      <div className="pointer-events-none fixed top-1/4 left-1/3 h-96 w-96 rounded-full bg-aurora-violet/15 blur-[120px]" />
-      <div className="pointer-events-none fixed bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-aurora-blue/15 blur-[120px]" />
+    <div className="relative min-h-screen bg-slate-50 text-slate-900 dark:bg-[#050510] dark:text-slate-100 font-body antialiased overflow-x-hidden transition-colors duration-200">
+      {/* Background Texture & Ambient Radial Glows */}
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-100/50 via-slate-50 to-slate-50 dark:from-indigo-900/20 dark:via-[#050510] dark:to-[#050510]" />
+      <div className="pointer-events-none fixed inset-0 z-0 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] dark:bg-[radial-gradient(#1e1b4b_1px,transparent_1px)] [background-size:28px_28px] opacity-30 dark:opacity-20" />
+      <div className="pointer-events-none fixed top-1/4 left-1/3 h-96 w-96 rounded-full bg-indigo-200/40 dark:bg-aurora-violet/15 blur-[120px]" />
+      <div className="pointer-events-none fixed bottom-1/4 right-1/4 h-96 w-96 rounded-full bg-sky-200/40 dark:bg-aurora-blue/15 blur-[120px]" />
 
       {/* Fixed Left Sidebar for Desktop */}
       <Sidebar
@@ -145,27 +146,29 @@ export default function DashboardShell({
       />
 
       {/* Mobile Navigation Header */}
-      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-white/10 bg-[#070714]/80 backdrop-blur-xl px-4 py-3 md:hidden">
+      <header className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-[#070714]/80 backdrop-blur-xl px-4 py-3 md:hidden">
         <div className="flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-aurora-violet via-aurora-blue to-aurora-rose p-0.5 shadow-md">
-            <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-[#050510]">
-              <Wand2 size={16} className="text-aurora-violet" />
+          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-600 via-sky-500 to-purple-600 dark:from-aurora-violet dark:via-aurora-blue dark:to-aurora-rose p-0.5 shadow-md">
+            <div className="flex h-full w-full items-center justify-center rounded-[10px] bg-white dark:bg-[#050510]">
+              <Wand2 size={16} className="text-indigo-600 dark:text-aurora-violet" />
             </div>
           </div>
-          <span className="font-display text-base font-bold text-white">Prathomix</span>
+          <span className="font-display text-base font-bold text-slate-900 dark:text-white">Prathomix</span>
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeToggle variant="pill" />
+
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-aurora-violet to-aurora-blue px-3 py-1.5 text-xs font-semibold text-white shadow-md cursor-pointer"
+            className="flex items-center gap-1.5 rounded-xl bg-slate-900 text-white dark:bg-gradient-to-r dark:from-aurora-violet dark:to-aurora-blue px-3 py-1.5 text-xs font-semibold shadow-md cursor-pointer"
           >
             <Plus size={15} /> New
           </button>
 
           <button
             onClick={() => setMobileMenuOpen((p) => !p)}
-            className="flex h-9 w-9 items-center justify-center rounded-xl glass text-slate-300 cursor-pointer"
+            className="flex h-9 w-9 items-center justify-center rounded-xl glass text-slate-600 dark:text-slate-300 cursor-pointer"
           >
             {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
           </button>
@@ -179,7 +182,7 @@ export default function DashboardShell({
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
-            className="md:hidden sticky top-14 z-30 border-b border-white/10 glass bg-slate-950/95 p-4 backdrop-blur-2xl"
+            className="md:hidden sticky top-14 z-30 border-b border-slate-200/80 dark:border-white/10 glass bg-white/95 dark:bg-slate-950/95 p-4 backdrop-blur-2xl"
           >
             <nav className="space-y-2">
               <button
@@ -187,25 +190,25 @@ export default function DashboardShell({
                   setActiveNav("dashboard");
                   setMobileMenuOpen(false);
                 }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10"
               >
-                <LayoutGrid size={16} className="text-aurora-violet" /> Dashboard
+                <LayoutGrid size={16} className="text-indigo-600 dark:text-aurora-violet" /> Dashboard
               </button>
               <button
                 onClick={() => {
                   setActiveNav("settings");
                   setMobileMenuOpen(false);
                 }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-slate-200 hover:bg-white/10"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-white/10"
               >
-                <Settings size={16} className="text-aurora-blue" /> Profile Settings
+                <Settings size={16} className="text-sky-600 dark:text-aurora-blue" /> Profile Settings
               </button>
               <button
                 onClick={() => {
                   setIsModalOpen(true);
                   setMobileMenuOpen(false);
                 }}
-                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-aurora-mint hover:bg-white/10"
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-emerald-600 dark:text-aurora-mint hover:bg-slate-100 dark:hover:bg-white/10"
               >
                 <Plus size={16} /> + New Humanization
               </button>
@@ -230,104 +233,104 @@ export default function DashboardShell({
           ) : (
             <>
               {/* Top Greeting & Primary CTA Bar */}
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-white/10">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between pb-6 border-b border-slate-200/80 dark:border-white/10">
                 <div>
-                  <h1 className="font-display text-2xl font-extrabold tracking-tight text-white md:text-4xl capitalize">
+                  <h1 className="font-display text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white md:text-4xl capitalize">
                     Welcome back,{" "}
-                    <span className="bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-clip-text text-transparent animate-gradient-flow bg-[length:200%_100%]">
+                    <span className="bg-gradient-to-r from-indigo-600 via-sky-500 to-purple-600 dark:from-aurora-violet dark:via-aurora-blue dark:to-aurora-rose bg-clip-text text-transparent animate-gradient-flow bg-[length:200%_100%]">
                       {userDisplayName}
                     </span>{" "}
                     👋
                   </h1>
-                  <p className="mt-1 text-xs md:text-sm text-slate-400">
+                  <p className="mt-1 text-xs md:text-sm text-slate-500 dark:text-slate-400">
                     Manage your humanized documents or create a new AI detector bypass project.
                   </p>
                 </div>
 
                 <button
                   onClick={() => setIsModalOpen(true)}
-                  className="relative group flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl p-px font-semibold text-sm text-white shadow-2xl shadow-aurora-violet/30 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
+                  className="relative group flex items-center justify-center gap-2.5 overflow-hidden rounded-2xl p-px font-semibold text-sm text-white shadow-xl shadow-slate-900/10 dark:shadow-aurora-violet/30 transition-all hover:scale-[1.03] active:scale-[0.98] cursor-pointer"
                 >
-                  <span className="absolute inset-0 bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
-                  <span className="relative flex items-center gap-2 rounded-[15px] bg-slate-950 px-6 py-3 transition-colors group-hover:bg-transparent">
+                  <span className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-sky-500 to-purple-600 dark:from-aurora-violet dark:via-aurora-blue dark:to-aurora-rose bg-[length:200%_100%] animate-gradient-flow" />
+                  <span className="relative flex items-center gap-2 rounded-[15px] bg-slate-900 text-white dark:bg-slate-950 px-6 py-3 transition-colors group-hover:bg-transparent">
                     <Plus size={18} />
                     <span>+ New Humanization</span>
                   </span>
                 </button>
               </div>
 
-              {/* Bento Stat Cards Row (100% Dynamic Real Data) */}
+              {/* Bento Stat Cards Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                 {/* Card 1: Words Humanized */}
-                <div className="relative overflow-hidden rounded-3xl glass border border-white/10 bg-[radial-gradient(ellipse_at_top_left,rgba(139,92,246,0.15),transparent_70%)] bg-slate-950/80 p-6 backdrop-blur-xl shadow-xl transition-all hover:border-aurora-violet/30">
+                <div className="relative overflow-hidden rounded-3xl glass border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-950/80 p-6 backdrop-blur-xl shadow-sm dark:shadow-xl transition-all hover:border-indigo-300 dark:hover:border-aurora-violet/30">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Words Humanized
                     </span>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-aurora-violet/15 text-aurora-violet border border-aurora-violet/30">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-50 dark:bg-aurora-violet/15 text-indigo-600 dark:text-aurora-violet border border-indigo-200 dark:border-aurora-violet/30">
                       <Sparkles size={18} />
                     </div>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display text-3xl font-extrabold text-white">
+                    <span className="font-display text-3xl font-extrabold text-slate-900 dark:text-white">
                       {totalWordsHumanized.toLocaleString()}
                     </span>
-                    <span className="text-xs font-semibold text-emerald-400 flex items-center gap-0.5">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-0.5">
                       <TrendingUp size={12} /> Live Total
                     </span>
                   </div>
-                  <p className="mt-2 text-[11px] text-slate-400">
+                  <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
                     Total words converted to 100% human score
                   </p>
                 </div>
 
                 {/* Card 2: AI Detectors Bypassed */}
-                <div className="relative overflow-hidden rounded-3xl glass border border-white/10 bg-[radial-gradient(ellipse_at_top_left,rgba(59,130,246,0.15),transparent_70%)] bg-slate-950/80 p-6 backdrop-blur-xl shadow-xl transition-all hover:border-aurora-blue/30">
+                <div className="relative overflow-hidden rounded-3xl glass border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-950/80 p-6 backdrop-blur-xl shadow-sm dark:shadow-xl transition-all hover:border-sky-300 dark:hover:border-aurora-blue/30">
                   <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                       Documents Bypassed
                     </span>
-                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-aurora-blue/15 text-aurora-blue border border-aurora-blue/30">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-50 dark:bg-aurora-blue/15 text-sky-600 dark:text-aurora-blue border border-sky-200 dark:border-aurora-blue/30">
                       <ShieldCheck size={18} />
                     </div>
                   </div>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-display text-3xl font-extrabold text-white">
+                    <span className="font-display text-3xl font-extrabold text-slate-900 dark:text-white">
                       {totalDocumentsBypassed.toLocaleString()}
                     </span>
-                    <span className="text-xs font-semibold text-aurora-mint">
+                    <span className="text-xs font-semibold text-emerald-600 dark:text-aurora-mint">
                       History Count
                     </span>
                   </div>
-                  <p className="mt-2 text-[11px] text-slate-400">
+                  <p className="mt-2 text-[11px] text-slate-500 dark:text-slate-400">
                     Bypasses Turnitin, Originality.ai & GPTZero
                   </p>
                 </div>
 
                 {/* Card 3: Current Plan */}
-                <div className="relative overflow-hidden rounded-3xl glass border border-white/10 bg-[radial-gradient(ellipse_at_top_left,rgba(236,72,153,0.15),transparent_70%)] bg-slate-950/80 p-6 backdrop-blur-xl shadow-xl transition-all hover:border-aurora-rose/30 flex flex-col justify-between">
+                <div className="relative overflow-hidden rounded-3xl glass border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-950/80 p-6 backdrop-blur-xl shadow-sm dark:shadow-xl transition-all hover:border-purple-300 dark:hover:border-aurora-rose/30 flex flex-col justify-between">
                   <div>
                     <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                      <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
                         Current Plan
                       </span>
-                      <span className="rounded-full bg-aurora-violet/20 px-2.5 py-0.5 text-[10px] font-bold text-aurora-violet border border-aurora-violet/40">
+                      <span className="rounded-full bg-indigo-50 dark:bg-aurora-violet/20 px-2.5 py-0.5 text-[10px] font-bold text-indigo-600 dark:text-aurora-violet border border-indigo-200 dark:border-aurora-violet/40">
                         PRO MEMBER
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-display text-2xl font-extrabold text-white">
+                      <span className="font-display text-2xl font-extrabold text-slate-900 dark:text-white">
                         {credits} Credits Left
                       </span>
                     </div>
                   </div>
-                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-white/5">
-                    <span className="text-[11px] text-slate-400">
+                  <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/5">
+                    <span className="text-[11px] text-slate-500 dark:text-slate-400">
                       Real-time Database Balance
                     </span>
                     <button
                       onClick={() => setIsModalOpen(true)}
-                      className="rounded-xl glass border border-white/20 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/10 transition-colors cursor-pointer"
+                      className="rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 border border-slate-200 dark:bg-white/10 dark:hover:bg-white/20 dark:text-white dark:border-white/20 px-3 py-1.5 text-xs font-semibold transition-colors cursor-pointer"
                     >
                       Use Credits
                     </button>
@@ -336,9 +339,9 @@ export default function DashboardShell({
               </div>
 
               {/* Quick Start Shortcuts Section */}
-              <div className="rounded-3xl glass border border-white/10 bg-slate-950/50 p-5 backdrop-blur-xl shadow-xl space-y-3">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                  <Zap size={14} className="text-aurora-violet" /> Quick Start Workspaces
+              <div className="rounded-3xl glass border border-slate-200/80 dark:border-white/10 bg-white/80 dark:bg-slate-950/50 p-5 backdrop-blur-xl shadow-sm dark:shadow-xl space-y-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                  <Zap size={14} className="text-indigo-600 dark:text-aurora-violet" /> Quick Start Workspaces
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <button
@@ -346,16 +349,16 @@ export default function DashboardShell({
                       setInputMode("text");
                       setIsModalOpen(true);
                     }}
-                    className="flex items-center gap-3 rounded-2xl glass-inset p-3.5 border border-white/10 hover:border-aurora-violet/40 hover:bg-white/[0.04] transition-all text-left group cursor-pointer"
+                    className="flex items-center gap-3 rounded-2xl glass-inset p-3.5 border border-slate-200/80 dark:border-white/10 hover:border-indigo-300 dark:hover:border-aurora-violet/40 bg-slate-50/60 dark:bg-white/[0.04] transition-all text-left group cursor-pointer"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-aurora-violet/15 text-aurora-violet border border-aurora-violet/30 group-hover:scale-105 transition-transform">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-aurora-violet/15 text-indigo-600 dark:text-aurora-violet border border-indigo-200 dark:border-aurora-violet/30 group-hover:scale-105 transition-transform">
                       <BookOpen size={18} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-white">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-200 group-hover:text-indigo-600 dark:group-hover:text-white">
                         Humanize Essay
                       </h4>
-                      <p className="text-[10px] text-slate-400">Academic & Research papers</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Academic & Research papers</p>
                     </div>
                   </button>
 
@@ -364,16 +367,16 @@ export default function DashboardShell({
                       setInputMode("document");
                       setIsModalOpen(true);
                     }}
-                    className="flex items-center gap-3 rounded-2xl glass-inset p-3.5 border border-white/10 hover:border-aurora-blue/40 hover:bg-white/[0.04] transition-all text-left group cursor-pointer"
+                    className="flex items-center gap-3 rounded-2xl glass-inset p-3.5 border border-slate-200/80 dark:border-white/10 hover:border-sky-300 dark:hover:border-aurora-blue/40 bg-slate-50/60 dark:bg-white/[0.04] transition-all text-left group cursor-pointer"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-aurora-blue/15 text-aurora-blue border border-aurora-blue/30 group-hover:scale-105 transition-transform">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-50 dark:bg-aurora-blue/15 text-sky-600 dark:text-aurora-blue border border-sky-200 dark:border-aurora-blue/30 group-hover:scale-105 transition-transform">
                       <UploadCloud size={18} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-white">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-200 group-hover:text-sky-600 dark:group-hover:text-white">
                         Bypass Turnitin
                       </h4>
-                      <p className="text-[10px] text-slate-400">Upload .docx / .pdf file</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Upload .docx / .pdf file</p>
                     </div>
                   </button>
 
@@ -382,16 +385,16 @@ export default function DashboardShell({
                       setInputMode("text");
                       setIsModalOpen(true);
                     }}
-                    className="flex items-center gap-3 rounded-2xl glass-inset p-3.5 border border-white/10 hover:border-aurora-rose/40 hover:bg-white/[0.04] transition-all text-left group cursor-pointer"
+                    className="flex items-center gap-3 rounded-2xl glass-inset p-3.5 border border-slate-200/80 dark:border-white/10 hover:border-purple-300 dark:hover:border-aurora-rose/40 bg-slate-50/60 dark:bg-white/[0.04] transition-all text-left group cursor-pointer"
                   >
-                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-aurora-rose/15 text-aurora-rose border border-aurora-rose/30 group-hover:scale-105 transition-transform">
+                    <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-purple-50 dark:bg-aurora-rose/15 text-purple-600 dark:text-aurora-rose border border-purple-200 dark:border-aurora-rose/30 group-hover:scale-105 transition-transform">
                       <Mail size={18} />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-slate-200 group-hover:text-white">
+                      <h4 className="text-xs font-bold text-slate-900 dark:text-slate-200 group-hover:text-purple-600 dark:group-hover:text-white">
                         Write Email
                       </h4>
-                      <p className="text-[10px] text-slate-400">Professional communications</p>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400">Professional communications</p>
                     </div>
                   </button>
                 </div>
@@ -400,7 +403,7 @@ export default function DashboardShell({
               {/* Filter Tabs & Real-Time Search Row */}
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 {/* Filter Tabs */}
-                <div className="flex items-center gap-1 rounded-2xl glass p-1.5 border border-white/15 bg-white/[0.03] backdrop-blur-xl shadow-xl w-fit">
+                <div className="flex items-center gap-1 rounded-2xl glass p-1.5 border border-slate-200/80 dark:border-white/15 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl shadow-sm dark:shadow-xl w-fit">
                   {[
                     { id: "all", label: "All Projects" },
                     { id: "recent", label: "Recent (7 Days)" },
@@ -410,15 +413,16 @@ export default function DashboardShell({
                     <button
                       key={tab.id}
                       onClick={() => setFilterTab(tab.id)}
-                      className={`relative rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${filterTab === tab.id
+                      className={`relative rounded-xl px-4 py-2 text-xs font-semibold transition-all cursor-pointer ${
+                        filterTab === tab.id
                           ? "text-white shadow-md"
-                          : "text-slate-400 hover:text-slate-200"
-                        }`}
+                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                      }`}
                     >
                       {filterTab === tab.id && (
                         <motion.div
                           layoutId="gamma-filter-tab"
-                          className="absolute inset-0 rounded-xl bg-gradient-to-r from-aurora-violet/80 to-aurora-blue/80"
+                          className="absolute inset-0 rounded-xl bg-slate-900 dark:bg-gradient-to-r dark:from-aurora-violet/80 dark:to-aurora-blue/80"
                           transition={{ type: "spring", stiffness: 400, damping: 32 }}
                         />
                       )}
@@ -438,12 +442,12 @@ export default function DashboardShell({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search history by name or tone..."
-                    className="w-full rounded-2xl glass py-2.5 pl-10 pr-4 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-aurora-violet/50 border border-white/15 bg-white/[0.03] backdrop-blur-xl shadow-xl"
+                    className="w-full rounded-2xl glass py-2.5 pl-10 pr-4 text-xs text-slate-900 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40 dark:focus:ring-aurora-violet/50 border border-slate-200/80 dark:border-white/15 bg-white/80 dark:bg-white/[0.03] backdrop-blur-xl shadow-sm dark:shadow-xl"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white text-xs"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-900 dark:hover:text-white text-xs"
                     >
                       <X size={14} />
                     </button>
@@ -454,7 +458,7 @@ export default function DashboardShell({
               {/* Document History Grid (Gamma Style) */}
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between">
-                  <h2 className="font-display text-lg font-bold text-slate-100">
+                  <h2 className="font-display text-lg font-bold text-slate-900 dark:text-slate-100">
                     Recent Projects
                   </h2>
                 </div>
@@ -474,25 +478,25 @@ export default function DashboardShell({
       {/* --- Interactive "+ New Humanization" Creation Modal --- */}
       <AnimatePresence>
         {isModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-black/80 backdrop-blur-md">
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto bg-slate-900/40 dark:bg-black/80 backdrop-blur-md">
             <motion.div
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2 }}
-              className="relative w-full max-w-4xl rounded-3xl glass border border-white/20 p-6 md:p-8 shadow-2xl bg-slate-950/95 my-8 max-h-[90vh] overflow-y-auto thin-scrollbar"
+              className="relative w-full max-w-4xl rounded-3xl glass border border-slate-200 dark:border-white/20 p-6 md:p-8 shadow-2xl bg-white/95 dark:bg-slate-950/95 text-slate-900 dark:text-white my-8 max-h-[90vh] overflow-y-auto thin-scrollbar"
             >
               {/* Modal Header */}
-              <div className="flex items-center justify-between pb-6 border-b border-white/10">
+              <div className="flex items-center justify-between pb-6 border-b border-slate-200/80 dark:border-white/10">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-aurora-violet/20 border border-aurora-violet/30 text-aurora-violet">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 dark:bg-aurora-violet/20 border border-indigo-200 dark:border-aurora-violet/30 text-indigo-600 dark:text-aurora-violet">
                     <Wand2 size={20} />
                   </div>
                   <div>
-                    <h3 className="font-display text-xl font-bold text-white">
+                    <h3 className="font-display text-xl font-bold text-slate-900 dark:text-white">
                       New Humanization Project
                     </h3>
-                    <p className="text-xs text-slate-400">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Bypass Turnitin, GPTZero, and Originality.ai in seconds
                     </p>
                   </div>
@@ -500,7 +504,7 @@ export default function DashboardShell({
 
                 <button
                   onClick={() => setIsModalOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-xl glass text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                  className="flex h-9 w-9 items-center justify-center rounded-xl glass text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
                   <X size={18} />
                 </button>
@@ -508,18 +512,19 @@ export default function DashboardShell({
 
               {/* Mode Switcher Inside Modal */}
               <div className="mt-6 flex justify-center">
-                <div className="flex w-fit rounded-2xl glass-inset p-1.5 border border-white/10">
+                <div className="flex w-fit rounded-2xl glass-inset p-1.5 border border-slate-200/80 dark:border-white/10">
                   <button
                     onClick={() => setInputMode("text")}
-                    className={`relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold transition-all cursor-pointer ${inputMode === "text"
-                        ? "text-white shadow-lg"
-                        : "text-slate-400 hover:text-slate-200"
-                      }`}
+                    className={`relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold transition-all cursor-pointer ${
+                      inputMode === "text"
+                        ? "text-white shadow-md"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                    }`}
                   >
                     {inputMode === "text" && (
                       <motion.div
                         layoutId="modal-input-mode"
-                        className="absolute inset-0 rounded-xl bg-gradient-to-r from-aurora-violet to-aurora-blue"
+                        className="absolute inset-0 rounded-xl bg-slate-900 dark:bg-gradient-to-r dark:from-aurora-violet dark:to-aurora-blue"
                         transition={{ type: "spring", stiffness: 400, damping: 32 }}
                       />
                     )}
@@ -529,15 +534,16 @@ export default function DashboardShell({
 
                   <button
                     onClick={() => setInputMode("document")}
-                    className={`relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold transition-all cursor-pointer ${inputMode === "document"
-                        ? "text-white shadow-lg"
-                        : "text-slate-400 hover:text-slate-200"
-                      }`}
+                    className={`relative flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs md:text-sm font-semibold transition-all cursor-pointer ${
+                      inputMode === "document"
+                        ? "text-white shadow-md"
+                        : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
+                    }`}
                   >
                     {inputMode === "document" && (
                       <motion.div
                         layoutId="modal-input-mode"
-                        className="absolute inset-0 rounded-xl bg-gradient-to-r from-aurora-violet to-aurora-blue"
+                        className="absolute inset-0 rounded-xl bg-slate-900 dark:bg-gradient-to-r dark:from-aurora-violet dark:to-aurora-blue"
                         transition={{ type: "spring", stiffness: 400, damping: 32 }}
                       />
                     )}
@@ -588,4 +594,3 @@ export default function DashboardShell({
     </div>
   );
 }
-

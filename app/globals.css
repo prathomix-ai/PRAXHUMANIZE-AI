@@ -4,22 +4,27 @@
 
 @layer base {
   * {
-    @apply border-glass-border;
-  }
-  html {
-    color-scheme: dark;
+    @apply border-slate-200 dark:border-glass-border;
   }
   body {
-    @apply bg-void-950 text-slate-100 font-body antialiased;
+    @apply bg-slate-50 text-slate-900 dark:bg-void-950 dark:text-slate-100 font-body antialiased transition-colors duration-200;
   }
   ::selection {
-    @apply bg-aurora-violet/30 text-white;
+    @apply bg-indigo-500/20 text-indigo-950 dark:bg-aurora-violet/30 dark:text-white;
   }
 }
 
 @layer utilities {
-  /* Core glass panel treatment used across the dashboard */
+  /* Core white glass panel treatment for Premium Light Mode */
   .glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(16px) saturate(140%);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.04);
+  }
+
+  .dark .glass {
     background: linear-gradient(
       180deg,
       rgba(255, 255, 255, 0.055),
@@ -28,14 +33,28 @@
     backdrop-filter: blur(24px) saturate(140%);
     -webkit-backdrop-filter: blur(24px) saturate(140%);
     border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: none;
   }
 
   .glass-inset {
+    background: rgba(248, 250, 252, 0.8);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+  }
+
+  .dark .glass-inset {
     background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.06);
   }
 
   .text-gradient {
+    background: linear-gradient(90deg, #4f46e5, #0284c7, #d946ef, #4f46e5);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .dark .text-gradient {
     background: linear-gradient(90deg, #8b5cf6, #38bdf8, #f472b6, #8b5cf6);
     background-size: 300% 100%;
     -webkit-background-clip: text;
@@ -44,6 +63,16 @@
   }
 
   .shimmer-bg {
+    background: linear-gradient(
+      90deg,
+      rgba(0, 0, 0, 0.03) 0%,
+      rgba(0, 0, 0, 0.08) 50%,
+      rgba(0, 0, 0, 0.03) 100%
+    );
+    background-size: 800px 100%;
+  }
+
+  .dark .shimmer-bg {
     background: linear-gradient(
       90deg,
       rgba(255, 255, 255, 0.03) 0%,
@@ -66,8 +95,11 @@
     width: 6px;
   }
   .thin-scrollbar::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.12);
+    background: rgba(148, 163, 184, 0.3);
     border-radius: 999px;
+  }
+  .dark .thin-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.12);
   }
   .thin-scrollbar::-webkit-scrollbar-track {
     background: transparent;

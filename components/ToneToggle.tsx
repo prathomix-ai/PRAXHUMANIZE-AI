@@ -12,7 +12,6 @@ const TONES: { id: Tone; label: string }[] = [
   { id: "academic", label: "Academic" },
 ];
 
-
 export default function ToneToggle({
   value,
   onChange,
@@ -28,18 +27,20 @@ export default function ToneToggle({
           <button
             key={id}
             onClick={() => onChange(id)}
-            className={`relative rounded-lg px-3 py-1.5 text-xs font-medium tracking-wide transition-colors ${
-              active ? "text-white" : "text-slate-400 hover:text-slate-200"
+            className={`relative rounded-lg px-3 py-1.5 text-xs font-semibold tracking-wide transition-colors cursor-pointer ${
+              active
+                ? "text-slate-900 dark:text-white"
+                : "text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200"
             }`}
           >
             {active && (
               <motion.span
                 layoutId="tone-pill"
-                className="absolute inset-0 rounded-lg bg-white/10 ring-1 ring-white/20"
+                className="absolute inset-0 rounded-lg bg-slate-200/90 dark:bg-white/10 border border-slate-300/80 dark:border-white/20 shadow-sm"
                 transition={{ type: "spring", stiffness: 400, damping: 32 }}
               />
             )}
-            <span className="relative">{label}</span>
+            <span className="relative z-10">{label}</span>
           </button>
         );
       })}

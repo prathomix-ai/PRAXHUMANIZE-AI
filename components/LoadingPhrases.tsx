@@ -73,12 +73,10 @@ export default function LoadingPhrases() {
   const [progress, setProgress] = useState(15);
 
   useEffect(() => {
-    // Cycle text item every 3.5 seconds
     const textInterval = setInterval(() => {
       setIndex((i) => (i + 1) % ITEMS.length);
     }, 3500);
 
-    // Smooth simulated progress bar
     const progressInterval = setInterval(() => {
       setProgress((p) => (p >= 92 ? 92 : p + Math.floor(Math.random() * 8) + 3));
     }, 400);
@@ -99,20 +97,20 @@ export default function LoadingPhrases() {
         <motion.div
           animate={{ scale: [1, 1.35, 1], opacity: [0.3, 0.7, 0.3] }}
           transition={{ repeat: Infinity, duration: 2, ease: "easeInOut" }}
-          className="absolute inset-0 rounded-2xl bg-aurora-violet/20 blur-md"
+          className="absolute inset-0 rounded-2xl bg-indigo-200/50 dark:bg-aurora-violet/20 blur-md"
         />
-        <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl glass-inset border border-white/20 shadow-xl">
+        <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl glass-inset border border-slate-200 dark:border-white/20 shadow-md">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ repeat: Infinity, duration: 8, ease: "linear" }}
-            className="absolute inset-0 rounded-2xl border border-dashed border-aurora-violet/40"
+            className="absolute inset-0 rounded-2xl border border-dashed border-indigo-400/40 dark:border-aurora-violet/40"
           />
-          <IconComponent size={20} className="text-aurora-mint animate-pulse" />
+          <IconComponent size={20} className="text-emerald-600 dark:text-aurora-mint animate-pulse" />
         </div>
       </div>
 
       {/* Cycling Entertainment Box */}
-      <div className="min-h-[85px] max-w-md w-full flex flex-col items-center justify-center rounded-xl bg-white/[0.03] p-3.5 border border-white/10 backdrop-blur-md shadow-inner">
+      <div className="min-h-[85px] max-w-md w-full flex flex-col items-center justify-center rounded-xl bg-slate-100/80 dark:bg-white/[0.03] p-3.5 border border-slate-200/80 dark:border-white/10 backdrop-blur-md shadow-inner">
         <AnimatePresence mode="wait">
           <motion.div
             key={index}
@@ -122,10 +120,10 @@ export default function LoadingPhrases() {
             transition={{ duration: 0.35 }}
             className="flex flex-col items-center gap-1.5"
           >
-            <span className="rounded-full bg-aurora-violet/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-aurora-violet uppercase border border-aurora-violet/30">
+            <span className="rounded-full bg-indigo-50 dark:bg-aurora-violet/15 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-indigo-600 dark:text-aurora-violet uppercase border border-indigo-200 dark:border-aurora-violet/30">
               {currentItem.category}
             </span>
-            <p className="text-xs md:text-sm font-medium leading-relaxed text-slate-200">
+            <p className="text-xs md:text-sm font-medium leading-relaxed text-slate-800 dark:text-slate-200">
               "{currentItem.text}"
             </p>
           </motion.div>
@@ -134,26 +132,25 @@ export default function LoadingPhrases() {
 
       {/* Progress Bar & Pulse Indicator */}
       <div className="mt-4 w-full max-w-xs space-y-1.5">
-        <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10 p-0.5">
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-white/10 p-0.5">
           <motion.div
-            className="h-full rounded-full bg-gradient-to-r from-aurora-violet via-aurora-blue to-aurora-mint"
+            className="h-full rounded-full bg-gradient-to-r from-indigo-600 via-sky-500 to-emerald-500 dark:from-aurora-violet dark:via-aurora-blue dark:to-aurora-mint"
             initial={{ width: "10%" }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3, ease: "easeOut" }}
           />
         </div>
-        <div className="flex items-center justify-between text-[11px] text-slate-400">
+        <div className="flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
           <span className="flex items-center gap-1.5">
             <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-aurora-mint opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-aurora-mint"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 dark:bg-aurora-mint opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 dark:bg-aurora-mint"></span>
             </span>
             Humanizing content...
           </span>
-          <span className="font-mono text-slate-400">{progress}%</span>
+          <span className="font-mono text-slate-500 dark:text-slate-400">{progress}%</span>
         </div>
       </div>
     </div>
   );
 }
-
